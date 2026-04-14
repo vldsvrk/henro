@@ -1,0 +1,1 @@
+/Users/vldsvrk/Documents/obsidian personal/Key Concepts on Thinking and Idea Generation.md

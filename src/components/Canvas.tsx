@@ -1,0 +1,182 @@
+import { useRef, useEffect, useCallback, useState, type ReactNode } from 'react'
+import { useBrainstormStore } from '../store'
+
+export function Canvas({ children }: { children: ReactNode }) {
+  const viewport = useBrainstormStore((s) => s.viewport)
+  const pan = useBrainstormStore((s) => s.pan)
+  const zoom = useBrainstormStore((s) => s.zoom)
+  const setPendingNodePosition = useBrainstormStore((s) => s.setPendingNodePosition)
+  const selectNode = useBrainstormStore((s) => s.selectNode)
+  const selectNodesInRect = useBrainstormStore((s) => s.selectNodesInRect)
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const spaceHeld = useRef(false)
+  const [spaceDown, setSpaceDown] = useState(false)
+  const isPanning = useRef(false)
+  const isSelecting = useRef(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+  const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+
+  // Track space key
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault()
+        spaceHeld.current = true
+        setSpaceDown(true)
+      }
+    }
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        spaceHeld.current = false
+        setSpaceDown(false)
+      }
+    }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+    }
+  }, [])
+
+  // Non-passive wheel listener for zoom
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (e.ctrlKey) {
+        // Pinch-to-zoom (trackpad) or ctrl+scroll
+        const delta = -e.deltaY * 0.01
+        zoom(delta, { x: e.clientX, y: e.clientY })
+      } else {
+        // Two-finger scroll = pan
+        pan(-e.deltaX, -e.deltaY)
+      }
+    }
+
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [zoom])
+
+  const screenToCanvas = useCallback(
+    (sx: number, sy: number) => ({
+      x: (sx - window.innerWidth / 2 - viewport.x) / viewport.zoom,
+      y: (sy - window.innerHeight / 2 - viewport.y) / viewport.zoom,
+    }),
+    [viewport],
+  )
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.target !== e.currentTarget) return
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+
+      if (spaceHeld.current) {
+        // Space held — start panning
+        isPanning.current = true
+        dragStart.current = { x: e.clientX, y: e.clientY }
+      } else {
+        // No space — start selection
+        isSelecting.current = true
+        dragStart.current = { x: e.clientX, y: e.clientY }
+        selectNode(null)
+      }
+    },
+    [selectNode],
+  )
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (isPanning.current) {
+        const dx = e.clientX - dragStart.current.x
+        const dy = e.clientY - dragStart.current.y
+        pan(dx, dy)
+        dragStart.current = { x: e.clientX, y: e.clientY }
+        return
+      }
+
+      if (isSelecting.current) {
+        const x = Math.min(e.clientX, dragStart.current.x)
+        const y = Math.min(e.clientY, dragStart.current.y)
+        const w = Math.abs(e.clientX - dragStart.current.x)
+        const h = Math.abs(e.clientY - dragStart.current.y)
+        setSelectionBox({ x, y, w, h })
+      }
+    },
+    [pan],
+  )
+
+  const handlePointerUp = useCallback(() => {
+    if (isPanning.current) {
+      isPanning.current = false
+      return
+    }
+
+    if (isSelecting.current) {
+      isSelecting.current = false
+      if (selectionBox && (selectionBox.w > 5 || selectionBox.h > 5)) {
+        // Convert screen rect to canvas coords
+        const topLeft = screenToCanvas(selectionBox.x, selectionBox.y)
+        const bottomRight = screenToCanvas(
+          selectionBox.x + selectionBox.w,
+          selectionBox.y + selectionBox.h,
+        )
+        selectNodesInRect({
+          x: topLeft.x,
+          y: topLeft.y,
+          w: bottomRight.x - topLeft.x,
+          h: bottomRight.y - topLeft.y,
+        })
+      }
+      setSelectionBox(null)
+    }
+  }, [selectionBox, screenToCanvas, selectNodesInRect])
+
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target !== e.currentTarget) return
+      const pos = screenToCanvas(e.clientX, e.clientY)
+      setPendingNodePosition(pos)
+    },
+    [screenToCanvas, setPendingNodePosition],
+  )
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-full overflow-hidden"
+      style={{ cursor: isPanning.current ? 'grabbing' : spaceDown ? 'grab' : 'default' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onDoubleClick={handleDoubleClick}
+    >
+      <div
+        style={{
+          transform: `translate(calc(50vw + ${viewport.x}px), calc(50vh + ${viewport.y}px)) scale(${viewport.zoom})`,
+          transformOrigin: '0 0',
+        }}
+      >
+        {children}
+      </div>
+
+      {/* Selection rectangle */}
+      {selectionBox && (selectionBox.w > 2 || selectionBox.h > 2) && (
+        <div
+          className="fixed border border-blue-400 bg-blue-400/10 pointer-events-none"
+          style={{
+            left: selectionBox.x,
+            top: selectionBox.y,
+            width: selectionBox.w,
+            height: selectionBox.h,
+          }}
+        />
+      )}
+    </div>
+  )
+}
