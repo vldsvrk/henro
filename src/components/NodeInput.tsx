@@ -4,9 +4,13 @@ import { useBrainstormStore } from '../store'
 export function NodeInput() {
   const [text, setText] = useState('')
   const pendingNodePosition = useBrainstormStore((s) => s.pendingNodePosition)
+  const pendingConnectionSource = useBrainstormStore((s) => s.pendingConnectionSource)
   const addUserNode = useBrainstormStore((s) => s.addUserNode)
   const setPendingNodePosition = useBrainstormStore(
     (s) => s.setPendingNodePosition,
+  )
+  const setPendingConnectionSource = useBrainstormStore(
+    (s) => s.setPendingConnectionSource,
   )
   const viewport = useBrainstormStore((s) => s.viewport)
 
@@ -14,21 +18,22 @@ export function NodeInput() {
     (e: React.FormEvent) => {
       e.preventDefault()
       if (text.trim() && pendingNodePosition) {
-        addUserNode(text.trim(), pendingNodePosition)
+        addUserNode(text.trim(), pendingNodePosition, pendingConnectionSource ?? undefined)
         setText('')
       }
     },
-    [text, pendingNodePosition, addUserNode],
+    [text, pendingNodePosition, pendingConnectionSource, addUserNode],
   )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         setPendingNodePosition(null)
+        setPendingConnectionSource(null)
         setText('')
       }
     },
-    [setPendingNodePosition],
+    [setPendingNodePosition, setPendingConnectionSource],
   )
 
   if (!pendingNodePosition) return null
@@ -55,9 +60,10 @@ export function NodeInput() {
         onKeyDown={handleKeyDown}
         onBlur={() => {
           if (text.trim() && pendingNodePosition) {
-            addUserNode(text.trim(), pendingNodePosition)
+            addUserNode(text.trim(), pendingNodePosition, pendingConnectionSource ?? undefined)
           }
           setPendingNodePosition(null)
+          setPendingConnectionSource(null)
           setText('')
         }}
         placeholder="Your thought..."

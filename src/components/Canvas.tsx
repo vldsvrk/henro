@@ -7,7 +7,7 @@ export function Canvas({ children }: { children: ReactNode }) {
   const zoom = useBrainstormStore((s) => s.zoom)
   const setPendingNodePosition = useBrainstormStore((s) => s.setPendingNodePosition)
   const selectNode = useBrainstormStore((s) => s.selectNode)
-  const selectNodesInRect = useBrainstormStore((s) => s.selectNodesInRect)
+  const selectInRect = useBrainstormStore((s) => s.selectInRect)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const spaceHeld = useRef(false)
@@ -49,8 +49,8 @@ export function Canvas({ children }: { children: ReactNode }) {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
-      if (e.ctrlKey) {
-        // Pinch-to-zoom (trackpad) or ctrl+scroll
+      if (e.ctrlKey || e.metaKey) {
+        // Pinch-to-zoom (trackpad), Ctrl+scroll, or Cmd+scroll
         const delta = -e.deltaY * 0.01
         zoom(delta, { x: e.clientX, y: e.clientY })
       } else {
@@ -60,7 +60,19 @@ export function Canvas({ children }: { children: ReactNode }) {
     }
 
     el.addEventListener('wheel', handleWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleWheel)
+
+    // Block browser middle-click autoscroll
+    const blockMiddle = (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault()
+    }
+    el.addEventListener('mousedown', blockMiddle)
+    el.addEventListener('auxclick', blockMiddle)
+
+    return () => {
+      el.removeEventListener('wheel', handleWheel)
+      el.removeEventListener('mousedown', blockMiddle)
+      el.removeEventListener('auxclick', blockMiddle)
+    }
   }, [zoom])
 
   const screenToCanvas = useCallback(
@@ -73,7 +85,20 @@ export function Canvas({ children }: { children: ReactNode }) {
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      // Middle mouse button — pan from anywhere
+      if (e.button === 1) {
+        e.preventDefault()
+        ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+        isPanning.current = true
+        dragStart.current = { x: e.clientX, y: e.clientY }
+        return
+      }
+
       if (e.target !== e.currentTarget) return
+
+      // Shift held — preserve existing multi-selection, no rubber-band
+      if (e.shiftKey) return
+
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
 
       if (spaceHeld.current) {
@@ -106,9 +131,21 @@ export function Canvas({ children }: { children: ReactNode }) {
         const w = Math.abs(e.clientX - dragStart.current.x)
         const h = Math.abs(e.clientY - dragStart.current.y)
         setSelectionBox({ x, y, w, h })
+
+        // Live selection so nodes + connections highlight while dragging
+        if (w > 5 || h > 5) {
+          const topLeft = screenToCanvas(x, y)
+          const bottomRight = screenToCanvas(x + w, y + h)
+          selectInRect({
+            x: topLeft.x,
+            y: topLeft.y,
+            w: bottomRight.x - topLeft.x,
+            h: bottomRight.y - topLeft.y,
+          })
+        }
       }
     },
-    [pan],
+    [pan, screenToCanvas, selectInRect],
   )
 
   const handlePointerUp = useCallback(() => {
@@ -119,23 +156,10 @@ export function Canvas({ children }: { children: ReactNode }) {
 
     if (isSelecting.current) {
       isSelecting.current = false
-      if (selectionBox && (selectionBox.w > 5 || selectionBox.h > 5)) {
-        // Convert screen rect to canvas coords
-        const topLeft = screenToCanvas(selectionBox.x, selectionBox.y)
-        const bottomRight = screenToCanvas(
-          selectionBox.x + selectionBox.w,
-          selectionBox.y + selectionBox.h,
-        )
-        selectNodesInRect({
-          x: topLeft.x,
-          y: topLeft.y,
-          w: bottomRight.x - topLeft.x,
-          h: bottomRight.y - topLeft.y,
-        })
-      }
+      // Final selection already applied during drag; just tear down the box.
       setSelectionBox(null)
     }
-  }, [selectionBox, screenToCanvas, selectNodesInRect])
+  }, [])
 
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {

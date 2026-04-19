@@ -60,13 +60,13 @@ export function Connections() {
   const nodes = useBrainstormStore((s) => s.nodes)
   const connectionDrag = useBrainstormStore((s) => s.connectionDrag)
   const connections = useBrainstormStore((s) => s.connections)
-  const selectedConnection = useBrainstormStore((s) => s.selectedConnection)
+  const selectedConnectionIds = useBrainstormStore((s) => s.selectedConnectionIds)
   const active = Object.values(nodes).filter((n) => n.status === 'active')
 
   const isConnSelected = (a: string, b: string) =>
-    selectedConnection !== null &&
-    ((selectedConnection[0] === a && selectedConnection[1] === b) ||
-      (selectedConnection[0] === b && selectedConnection[1] === a))
+    selectedConnectionIds.some(
+      ([x, y]) => (x === a && y === b) || (x === b && y === a),
+    )
 
   return (
     <svg

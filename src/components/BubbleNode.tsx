@@ -10,12 +10,15 @@ const NODE_WIDTH = 200
 
 export function BubbleNode({ node }: { node: NodeData }) {
   const expandNode = useBrainstormStore((s) => s.expandNode)
+  const steerPrompt = useBrainstormStore((s) => s.steerPrompt)
+  const setSteerPrompt = useBrainstormStore((s) => s.setSteerPrompt)
   const dismissNode = useBrainstormStore((s) => s.dismissNode)
   const moveNode = useBrainstormStore((s) => s.moveNode)
   const mergeNodes = useBrainstormStore((s) => s.mergeNodes)
   const setMergeTarget = useBrainstormStore((s) => s.setMergeTarget)
   const mergeTarget = useBrainstormStore((s) => s.mergeTarget)
   const selectNode = useBrainstormStore((s) => s.selectNode)
+  const toggleNodeSelected = useBrainstormStore((s) => s.toggleNodeSelected)
   const selectedNodeId = useBrainstormStore((s) => s.selectedNodeId)
   const selectedNodeIds = useBrainstormStore((s) => s.selectedNodeIds)
   const setConnectionDrag = useBrainstormStore((s) => s.setConnectionDrag)
@@ -25,9 +28,11 @@ export function BubbleNode({ node }: { node: NodeData }) {
   const viewport = useBrainstormStore((s) => s.viewport)
   const isLoading = useBrainstormStore((s) => s.isLoading)
   const setNodeSize = useBrainstormStore((s) => s.setNodeSize)
+  const setDraggedNode = useBrainstormStore((s) => s.setDraggedNode)
+  const setPendingNodePosition = useBrainstormStore((s) => s.setPendingNodePosition)
+  const setPendingConnectionSource = useBrainstormStore((s) => s.setPendingConnectionSource)
 
   const elRef = useRef<HTMLDivElement>(null)
-  const [hovered, setHovered] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const isDragging = useRef(false)
   const dragStart = useRef({ x: 0, y: 0 })
@@ -36,6 +41,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
   const lastClickTime = useRef(0)
   const isSecondPress = useRef(false)
   const isConnectionDragging = useRef(false)
+  const isShiftClick = useRef(false)
 
   const textRef = useRef<HTMLSpanElement>(null)
   const [isClamped, setIsClamped] = useState(false)
@@ -69,6 +75,8 @@ export function BubbleNode({ node }: { node: NodeData }) {
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      // Let middle mouse pass through for canvas panning
+      if (e.button === 1) return
       e.stopPropagation()
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
 
@@ -79,8 +87,9 @@ export function BubbleNode({ node }: { node: NodeData }) {
       hasMoved.current = false
       dragStart.current = { x: e.clientX, y: e.clientY }
       nodeStart.current = { x: node.position.x, y: node.position.y }
+      isShiftClick.current = e.shiftKey
 
-      if (timeSinceLastClick < DOUBLE_CLICK_MS) {
+      if (!e.shiftKey && timeSinceLastClick < DOUBLE_CLICK_MS) {
         isSecondPress.current = true
       } else {
         isSecondPress.current = false
@@ -100,6 +109,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
 
       if (!moved) return
 
+      const justStarted = !hasMoved.current
       hasMoved.current = true
 
       if (isSecondPress.current) {
@@ -110,6 +120,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
         const candidate = findMergeCandidate(canvasPos)
         setMergeTarget(candidate?.id ?? null)
       } else {
+        if (justStarted) setDraggedNode(node.id)
         const newPos = {
           x: nodeStart.current.x + dx,
           y: nodeStart.current.y + dy,
@@ -120,16 +131,24 @@ export function BubbleNode({ node }: { node: NodeData }) {
         setMergeTarget(candidate?.id ?? null)
       }
     },
-    [viewport, moveNode, node.id, findMergeCandidate, setMergeTarget, setConnectionDrag, screenToCanvas],
+    [viewport, moveNode, node.id, findMergeCandidate, setMergeTarget, setConnectionDrag, screenToCanvas, setDraggedNode],
   )
 
   const handlePointerUp = useCallback(() => {
     if (!isDragging.current) return
     isDragging.current = false
 
+    if (hasMoved.current && !isConnectionDragging.current) {
+      setDraggedNode(null)
+    }
+
     if (isConnectionDragging.current) {
       if (mergeTarget) {
         addConnection(node.id, mergeTarget)
+      } else if (connectionDrag) {
+        // Drop on empty space → spawn a new connected node at release point
+        setPendingNodePosition(connectionDrag.point)
+        setPendingConnectionSource(node.id)
       }
       setConnectionDrag(null)
       setMergeTarget(null)
@@ -139,8 +158,12 @@ export function BubbleNode({ node }: { node: NodeData }) {
     }
 
     if (!hasMoved.current) {
-      if (isSecondPress.current) {
-        expandNode(node.id)
+      if (isShiftClick.current) {
+        toggleNodeSelected(node.id)
+        isShiftClick.current = false
+        lastClickTime.current = 0
+      } else if (isSecondPress.current) {
+        setSteerPrompt({ nodeId: node.id, defaultValue: 'brainstorm ideas' })
         isSecondPress.current = false
         lastClickTime.current = 0
       } else {
@@ -155,7 +178,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
     }
     setMergeTarget(null)
     isSecondPress.current = false
-  }, [expandNode, selectNode, mergeNodes, addConnection, mergeTarget, node.id, setMergeTarget, setConnectionDrag])
+  }, [setSteerPrompt, selectNode, toggleNodeSelected, mergeNodes, addConnection, mergeTarget, node.id, setMergeTarget, setConnectionDrag, setDraggedNode, connectionDrag, setPendingNodePosition, setPendingConnectionSource])
 
   const handleDismiss = useCallback(
     (e: React.MouseEvent) => {
@@ -192,19 +215,18 @@ export function BubbleNode({ node }: { node: NodeData }) {
   return (
     <div
       ref={elRef}
-      className="absolute select-none"
+      className="absolute select-none group"
       style={{
-        left: node.position.x,
-        top: node.position.y,
-        transform: 'translate(-50%, 0)',
+        left: Math.round(node.position.x),
+        top: Math.round(node.position.y),
+        transform: 'translate(-50%, 0) translateZ(0)',
         width: NODE_WIDTH,
         zIndex: isDragging.current ? 10 : 1,
+        willChange: 'left, top',
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
@@ -241,15 +263,56 @@ export function BubbleNode({ node }: { node: NodeData }) {
             {expanded ? 'less' : 'more'}
           </button>
         )}
-        {hovered && !isExpandLoading && (
+        {!isExpandLoading && (
           <button
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDismiss}
-            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-neutral-200 text-neutral-500 text-xs flex items-center justify-center hover:bg-neutral-300"
+            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-neutral-200 text-neutral-500 text-xs flex items-center justify-center hover:bg-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity"
           >
             ×
           </button>
         )}
       </motion.div>
+      {steerPrompt?.nodeId === node.id && (
+        <SteerInput
+          defaultValue={steerPrompt.defaultValue}
+          onSubmit={(value) => expandNode(node.id, value)}
+          onCancel={() => setSteerPrompt(null)}
+        />
+      )}
     </div>
+  )
+}
+
+function SteerInput({
+  defaultValue,
+  onSubmit,
+  onCancel,
+}: {
+  defaultValue: string
+  onSubmit: (value: string) => void
+  onCancel: () => void
+}) {
+  const [value, setValue] = useState(defaultValue)
+  return (
+    <input
+      autoFocus
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          onSubmit(value)
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          onCancel()
+        }
+      }}
+      onBlur={onCancel}
+      placeholder="branch on..."
+      className="mt-2 w-full px-2 py-1 text-xs border border-neutral-400 rounded outline-none focus:border-neutral-700 bg-white shadow-sm"
+    />
   )
 }
