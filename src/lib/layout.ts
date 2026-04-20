@@ -3,7 +3,7 @@ export type NodeBox = { x: number; y: number; w: number; h: number }
 
 const RADIUS = 160
 const PADDING = 24 // extra gap between node edges
-const DEFAULT_W = 200 // matches NODE_WIDTH in BubbleNode
+const DEFAULT_W = 180 // matches NODE_WIDTH in BubbleNode
 const DEFAULT_H = 60  // typical height with wrapped text
 
 export function computeChildPositions(
@@ -46,40 +46,60 @@ export function computeChildPositions(
 }
 
 function findFreeSpot(
-  pos: Position,
+  ideal: Position,
   parent: Position,
   angle: number,
   occupied: NodeBox[],
 ): Position {
   const newBox = { w: DEFAULT_W, h: DEFAULT_H }
 
-  // Try original position first
-  if (!overlapsAny(pos, newBox, occupied)) return pos
+  if (!overlapsAny(ideal, newBox, occupied)) return ideal
 
-  // Strategy 1: push outward along same angle
-  for (let step = 1; step <= 8; step++) {
-    const r = RADIUS + step * 70
-    const candidate = {
-      x: parent.x + r * Math.cos(angle),
-      y: parent.y + r * Math.sin(angle),
-    }
-    if (!overlapsAny(candidate, newBox, occupied)) return candidate
-  }
+  // Generate a dense set of candidate positions varying both radius and angle,
+  // then pick the one closest to the ideal spot that isn't occupied. This
+  // avoids the failure mode where we pushed far along a blocked direction
+  // before trying a small angular nudge that would have fit right next door.
+  const RADII = [
+    RADIUS,
+    RADIUS + 40,
+    RADIUS + 80,
+    RADIUS + 130,
+    RADIUS + 190,
+    RADIUS + 260,
+    RADIUS + 340,
+  ]
+  const ANGLE_OFFSETS = [
+    0,
+    Math.PI / 18, -Math.PI / 18,
+    Math.PI / 12, -Math.PI / 12,
+    Math.PI / 8, -Math.PI / 8,
+    Math.PI / 6, -Math.PI / 6,
+    Math.PI / 4, -Math.PI / 4,
+    Math.PI / 3, -Math.PI / 3,
+    Math.PI / 2.2, -Math.PI / 2.2,
+    Math.PI / 1.6, -Math.PI / 1.6,
+    Math.PI,
+  ]
 
-  // Strategy 2: spiral outward — try multiple angles at increasing radii
-  for (let ring = 1; ring <= 6; ring++) {
-    const r = RADIUS + ring * 80
-    const steps = 8 + ring * 4
-    for (let s = 0; s < steps; s++) {
-      // Alternate left/right of base angle
-      const offset = (Math.floor(s / 2) + 1) * (s % 2 === 0 ? 1 : -1)
-      const a = angle + (offset * Math.PI * 2) / steps
-      const candidate = {
+  const candidates: Position[] = []
+  for (const r of RADII) {
+    for (const da of ANGLE_OFFSETS) {
+      const a = angle + da
+      candidates.push({
         x: parent.x + r * Math.cos(a),
         y: parent.y + r * Math.sin(a),
-      }
-      if (!overlapsAny(candidate, newBox, occupied)) return candidate
+      })
     }
+  }
+
+  candidates.sort(
+    (a, b) =>
+      Math.hypot(a.x - ideal.x, a.y - ideal.y) -
+      Math.hypot(b.x - ideal.x, b.y - ideal.y),
+  )
+
+  for (const c of candidates) {
+    if (!overlapsAny(c, newBox, occupied)) return c
   }
 
   // Fallback: far out along original angle

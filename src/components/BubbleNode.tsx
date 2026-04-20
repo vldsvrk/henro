@@ -2,11 +2,12 @@ import { useRef, useCallback, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
 import type { NodeData } from '../store'
+import { CloseIcon } from './icons'
 
 const MERGE_DISTANCE = 60
 const DOUBLE_CLICK_MS = 350
 const DRAG_THRESHOLD = 5
-const NODE_WIDTH = 200
+const NODE_WIDTH = 180
 
 export function BubbleNode({ node }: { node: NodeData }) {
   const expandNode = useBrainstormStore((s) => s.expandNode)
@@ -234,45 +235,59 @@ export function BubbleNode({ node }: { node: NodeData }) {
         exit={{ scale: 0, opacity: 0 }}
         transition={{ duration: 0.2 }}
         className={`
-          relative px-3 py-2 rounded-lg border cursor-pointer
-          ${isConnectionTarget ? 'border-blue-400 bg-blue-50' : isMergeHighlight ? 'border-blue-400 bg-blue-50' : isSelected ? 'border-neutral-800 bg-white' : node.origin === 'ai' ? 'border-pink-300 bg-white' : 'border-neutral-300 bg-white'}
+          relative rounded-[15px] px-[15px] py-[11px] cursor-pointer text-ink bg-white
+          ${
+            isConnectionTarget || isMergeHighlight || isSelected
+              ? 'outline outline-[1.5px] outline-select'
+              : node.origin === 'ai'
+                ? 'outline outline-[1px] outline-ai'
+                : ''
+          }
           ${isExpandLoading ? 'opacity-60' : ''}
         `}
       >
         <span
           ref={textRef}
-          className="text-sm leading-snug break-words block"
-          style={!expanded ? {
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          } : undefined}
+          className="text-[12px] leading-[1.4] break-words block"
+          style={
+            !expanded
+              ? {
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }
+              : undefined
+          }
         >
           {node.text}
         </span>
         {isExpandLoading && (
-          <span className="ml-1 text-neutral-400 text-xs">...</span>
-        )}
-        {(isClamped || expanded) && (
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={handleToggleExpand}
-            className="block text-xs text-neutral-400 hover:text-neutral-600 mt-1"
-          >
-            {expanded ? 'less' : 'more'}
-          </button>
+          <span className="ml-1 text-ink/40 text-[11px]">...</span>
         )}
         {!isExpandLoading && (
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDismiss}
-            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-neutral-200 text-neutral-500 text-xs flex items-center justify-center hover:bg-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute -top-5 -right-5 w-[25px] h-[25px] rounded-full bg-white flex items-center justify-center opacity-0 group-hover:opacity-100 text-ink/30 hover:text-ink transition-[opacity,color]"
+            aria-label="Dismiss"
           >
-            ×
+            <CloseIcon />
           </button>
         )}
       </motion.div>
+      {(isClamped || expanded) && !isExpandLoading && (
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={handleToggleExpand}
+          className={`group/pill absolute left-1/2 -translate-x-1/2 top-full flex items-center justify-center px-4 py-[8px] transition-opacity ${
+            expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
+          aria-label={expanded ? 'Collapse' : 'Expand'}
+        >
+          <span className="block w-[29px] h-[4px] rounded-[7px] bg-line-neutral group-hover/pill:bg-ink/50 transition-colors" />
+        </button>
+      )}
       {steerPrompt?.nodeId === node.id && (
         <SteerInput
           defaultValue={steerPrompt.defaultValue}
@@ -312,7 +327,7 @@ function SteerInput({
       }}
       onBlur={onCancel}
       placeholder="branch on..."
-      className="mt-2 w-full px-2 py-1 text-xs border border-neutral-400 rounded outline-none focus:border-neutral-700 bg-white shadow-sm"
+      className="mt-[10px] w-full px-3 py-2 text-[12px] rounded-[10px] outline-none bg-white text-ink placeholder:text-ink/40"
     />
   )
 }

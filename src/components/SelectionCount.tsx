@@ -16,21 +16,20 @@ export function SelectionCount() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           transition={{ duration: 0.15 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-2 bg-white border border-neutral-300 rounded-full shadow-md"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-[2px] p-[2px] bg-white rounded-[10px]"
         >
-          <span className="text-sm text-neutral-700">
+          <span className="px-[15px] text-[12px] text-ink/80">
             {selectedNodeIds.length} selected
           </span>
-          <span className="w-px h-4 bg-neutral-200" />
           <button
             onClick={() => selectNode(null)}
-            className="text-xs text-neutral-500 hover:text-neutral-800"
+            className="px-[10px] py-[5px] text-[12px] font-medium bg-chip rounded-[8px] text-ink hover:bg-[#eee] transition-colors"
           >
             Clear
           </button>
           <button
             onClick={() => deleteSelection()}
-            className="text-xs text-red-500 hover:text-red-700"
+            className="px-[10px] py-[5px] text-[12px] font-medium bg-danger-soft rounded-[8px] text-danger hover:brightness-95 transition-colors"
           >
             Delete
           </button>

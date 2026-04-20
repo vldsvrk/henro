@@ -18,7 +18,7 @@ function getConfig() {
   return {
     apiKey:
       (parsed.apiKey as string) || import.meta.env.VITE_OPENROUTER_API_KEY || '',
-    model: (parsed.model as string) || 'google/gemini-3-flash-preview',
+    model: (parsed.model as string) || 'anthropic/claude-sonnet-4.5',
     branchCount:
       Number.isFinite(branchCountRaw) && branchCountRaw > 0
         ? Math.min(10, Math.floor(branchCountRaw))
@@ -94,7 +94,7 @@ export async function generateBranches(
       : ''
 
   const system = `${systemPrompt}\n\nReturn ONLY a JSON array of ${branchCount} strings. No markdown, no explanation.`
-  const user = `Target to branch from: "${text}"${lensStr}${contextStr}\n\nReturn ${branchCount} new ideas branching from the target, as a JSON array of strings. Stay grounded in the direction the brainstorm is heading.`
+  const user = `Target to branch from: "${text}"${lensStr}${contextStr}\n\nReturn ${branchCount} new ideas as a JSON array of strings. Each idea: ≤15 words. Name the concept; skip the rationale, benefits, and qualifiers. Stay grounded in the direction the brainstorm is heading.`
 
   const raw = await chat(
     [
@@ -104,16 +104,27 @@ export async function generateBranches(
     'generateBranches',
   )
 
+  const stripped = raw
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?\s*```\s*$/, '')
+    .trim()
+
   try {
-    const parsed = JSON.parse(raw.trim())
+    const parsed = JSON.parse(stripped)
     if (Array.isArray(parsed) && parsed.length >= 1) {
       return parsed.slice(0, branchCount).map(String)
     }
   } catch {
-    // Fallback: split by newlines, strip numbering
-    const lines = raw
+    // Fallback: split by newlines, strip numbering and stray quotes/brackets
+    const lines = stripped
       .split('\n')
-      .map((l) => l.replace(/^\d+[.)]\s*/, '').trim())
+      .map((l) =>
+        l
+          .replace(/^\d+[.)]\s*/, '')
+          .replace(/^[\s"'\[,]+|[\s"',\]]+$/g, '')
+          .trim(),
+      )
       .filter(Boolean)
     if (lines.length >= 1) return lines.slice(0, branchCount)
   }

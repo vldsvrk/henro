@@ -34,14 +34,14 @@ function App() {
 
   if (!hasSeed) {
     return (
-      <div className="w-screen h-screen bg-neutral-50">
+      <div className="w-screen h-screen bg-canvas text-ink">
         <SeedInput />
       </div>
     )
   }
 
   return (
-    <div className="w-screen h-screen bg-neutral-50">
+    <div className="w-screen h-screen bg-canvas text-ink">
       <Canvas>
         <Connections />
         <AnimatePresence>

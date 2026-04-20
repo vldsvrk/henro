@@ -67,7 +67,7 @@ export function NodeInput() {
           setText('')
         }}
         placeholder="Your thought..."
-        className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg outline-none focus:border-neutral-500"
+        className="px-[15px] py-[11px] text-[12px] rounded-[15px] outline-none bg-white text-ink placeholder:text-ink/40 w-[180px]"
         autoFocus
       />
     </form>

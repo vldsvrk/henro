@@ -8,28 +8,31 @@ export function ComposeButton() {
   const nodeCount = useBrainstormStore(
     (s) => Object.values(s.nodes).filter((n) => n.status === 'active').length,
   )
+  const hasSelection = useBrainstormStore((s) => s.selectedNodeId !== null)
 
-  if (nodeCount < 2 && !composeResult) return null
+  if (!composeResult && (nodeCount < 2 || hasSelection)) return null
 
   return (
     <>
-      <button
-        onClick={compose}
-        disabled={isLoading === 'compose'}
-        className="fixed bottom-6 right-6 px-4 py-2 border border-neutral-300 rounded-lg bg-white hover:bg-neutral-50 text-sm disabled:opacity-50 z-40"
-      >
-        {isLoading === 'compose' ? 'Composing...' : 'Compose'}
-      </button>
+      {!hasSelection && nodeCount >= 2 && (
+        <button
+          onClick={compose}
+          disabled={isLoading === 'compose'}
+          className="fixed bottom-6 right-6 px-[16px] py-[8px] rounded-[8px] bg-chip hover:bg-[#eee] text-[14px] font-medium text-ink disabled:opacity-50 z-40 transition-colors"
+        >
+          {isLoading === 'compose' ? 'Composing...' : 'Compose'}
+        </button>
+      )}
 
       {composeResult && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/20 z-50">
-          <div className="bg-white border border-neutral-300 rounded-lg p-6 max-w-lg w-full mx-4">
-            <pre className="whitespace-pre-wrap text-sm mb-4">
+          <div className="bg-white rounded-[13px] p-6 max-w-lg w-full mx-4">
+            <pre className="whitespace-pre-wrap text-[14px] text-ink leading-[1.5] mb-4">
               {composeResult}
             </pre>
             <button
               onClick={clearComposeResult}
-              className="px-3 py-1 border border-neutral-300 rounded text-sm hover:bg-neutral-50"
+              className="px-[16px] py-[8px] rounded-[8px] bg-chip hover:bg-[#eee] text-[14px] font-medium text-ink transition-colors"
             >
               Close
             </button>

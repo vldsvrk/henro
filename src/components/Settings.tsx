@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useBrainstormStore } from '../store'
 import {
   SYSTEM_PROMPT_PRESETS,
   PRESET_LABELS,
@@ -8,7 +9,7 @@ import {
 } from '../lib/prompts'
 
 const CONFIG_KEY = 'openrouter-config'
-const DEFAULT_MODEL = 'google/gemini-3-flash-preview'
+const DEFAULT_MODEL = 'anthropic/claude-sonnet-4.5'
 
 function loadConfig() {
   try {
@@ -55,40 +56,43 @@ export function Settings() {
     setSystemPrompt(SYSTEM_PROMPT_PRESETS[key])
   }
 
+  const hasSelection = useBrainstormStore((s) => s.selectedNodeId !== null)
+  if (hasSelection) return null
+
   return (
     <div className="fixed top-4 right-4 z-40 flex flex-col gap-2 items-end">
       <button
         onClick={() => setShowAI(!showAI)}
-        className={`px-2 py-1 text-xs border rounded ${
+        className={`px-[14px] py-[6px] text-[12px] font-medium rounded-[10px] transition-colors ${
           showAI
-            ? 'border-neutral-800 bg-neutral-800 text-white'
-            : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100'
+            ? 'bg-ink text-white'
+            : 'bg-white text-ink hover:bg-chip'
         }`}
       >
         AI
       </button>
 
       {showAI && (
-        <div className="bg-white border border-neutral-300 rounded-lg p-3 shadow-lg w-80 flex flex-col gap-2 max-h-[80vh] overflow-y-auto">
-          <label className="text-xs text-neutral-500">OpenRouter API Key</label>
+        <div className="bg-white rounded-[13px] p-[14px] w-[320px] flex flex-col gap-[10px] max-h-[80vh] overflow-y-auto">
+          <label className="text-[12px] text-ink/60">OpenRouter API Key</label>
           <input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-or-..."
-            className="text-sm border border-neutral-300 rounded px-2 py-1 w-full"
+            className="text-[13px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-full outline-none text-ink placeholder:text-ink/40"
           />
 
-          <label className="text-xs text-neutral-500">Model</label>
+          <label className="text-[12px] text-ink/60">Model</label>
           <input
             type="text"
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            placeholder="google/gemini-3-flash-preview"
-            className="text-sm border border-neutral-300 rounded px-2 py-1 w-full"
+            placeholder="anthropic/claude-sonnet-4.5"
+            className="text-[13px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-full outline-none text-ink placeholder:text-ink/40"
           />
 
-          <label className="text-xs text-neutral-500">Branches per expansion</label>
+          <label className="text-[12px] text-ink/60">Branches per expansion</label>
           <input
             type="number"
             min={1}
@@ -102,16 +106,16 @@ export function Settings() {
                   : DEFAULT_BRANCH_COUNT,
               )
             }}
-            className="text-sm border border-neutral-300 rounded px-2 py-1 w-24"
+            className="text-[13px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-[96px] outline-none text-ink"
           />
 
-          <label className="text-xs text-neutral-500 mt-1">System prompt</label>
-          <div className="flex gap-1 flex-wrap">
+          <label className="text-[12px] text-ink/60 mt-[4px]">System prompt</label>
+          <div className="flex gap-[6px] flex-wrap">
             {(Object.keys(SYSTEM_PROMPT_PRESETS) as PresetKey[]).map((key) => (
               <button
                 key={key}
                 onClick={() => loadPreset(key)}
-                className="text-xs px-2 py-1 border border-neutral-300 rounded hover:bg-neutral-100"
+                className="text-[12px] px-[10px] py-[5px] bg-chip rounded-[8px] text-ink hover:bg-[#eee] transition-colors"
               >
                 {PRESET_LABELS[key]}
               </button>
@@ -121,12 +125,12 @@ export function Settings() {
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             rows={8}
-            className="text-xs border border-neutral-300 rounded px-2 py-1 w-full resize-none leading-relaxed"
+            className="text-[12px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-full outline-none resize-none text-ink leading-[1.5]"
           />
 
           <button
             onClick={saveConfig}
-            className="text-xs bg-neutral-800 text-white rounded px-3 py-1 self-end hover:bg-neutral-700 mt-1"
+            className="text-[13px] font-medium bg-ink text-white rounded-[8px] px-[16px] py-[8px] self-end hover:opacity-90 mt-[4px] transition-opacity"
           >
             Save
           </button>

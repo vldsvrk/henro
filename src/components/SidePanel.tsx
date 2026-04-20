@@ -1,102 +1,132 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
+import { BranchIcon, PromptIcon } from './icons'
 
 export function SidePanel() {
   const selectedNodeId = useBrainstormStore((s) => s.selectedNodeId)
   const selectedNodeIds = useBrainstormStore((s) => s.selectedNodeIds)
   const nodes = useBrainstormStore((s) => s.nodes)
-  const selectNode = useBrainstormStore((s) => s.selectNode)
   const updateNodeText = useBrainstormStore((s) => s.updateNodeText)
   const dismissNode = useBrainstormStore((s) => s.dismissNode)
+  const selectNode = useBrainstormStore((s) => s.selectNode)
   const setSteerPrompt = useBrainstormStore((s) => s.setSteerPrompt)
 
-  if (selectedNodeIds.length > 1) return null
-  if (!selectedNodeId) return null
-  const node = nodes[selectedNodeId]
-  if (!node || node.status !== 'active') return null
-
-  const hasActiveChildren = node.childIds.some(
-    (id) => nodes[id]?.status === 'active',
+  const node = selectedNodeId ? nodes[selectedNodeId] : null
+  const visible = !!(
+    node &&
+    node.status === 'active' &&
+    selectedNodeIds.length <= 1
   )
-  const parent = node.parentId ? nodes[node.parentId] : null
+
+  const activeChildCount = node
+    ? node.childIds.filter((id) => nodes[id]?.status === 'active').length
+    : 0
+  const hasActiveChildren = activeChildCount > 0
+  const parent = node?.parentId ? nodes[node.parentId] : null
+  const isAI = node?.origin === 'ai'
 
   return (
-    <div className="fixed top-0 right-0 h-full w-80 bg-white border-l border-neutral-200 z-30 flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
-        <span className="text-sm text-neutral-500">
-          {node.origin === 'ai' ? 'AI generated' : 'Your thought'}
-        </span>
-        <button
-          onClick={() => selectNode(null)}
-          className="text-neutral-400 hover:text-neutral-600 text-lg"
+    <AnimatePresence>
+      {visible && node && (
+        <motion.div
+          key="side-panel"
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 24 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="fixed top-0 right-0 h-screen w-[393px] p-[30px] z-30 flex items-stretch pointer-events-none"
         >
-          ×
-        </button>
-      </div>
+      <div className="flex-1 bg-white rounded-[13px] flex flex-col p-[10px] gap-[10px] overflow-hidden pointer-events-auto">
+        <div className="flex items-center justify-between px-[20px] py-[15px]">
+          <span className="text-[15px] text-ink/60">
+            {isAI ? 'AI Response' : 'Your Thought'}
+          </span>
+          <div className="flex items-center gap-[10px] text-[12px] text-ink/60">
+            <span>Depth: {node.depth}</span>
+            <span className="w-[3px] h-[3px] rounded-full bg-ink/40" />
+            <span>Children: {activeChildCount}</span>
+          </div>
+        </div>
 
-      <div className="flex-1 p-4 flex flex-col gap-4">
-        <textarea
-          value={node.text}
-          onChange={(e) => updateNodeText(selectedNodeId, e.target.value)}
-          className="w-full p-2 text-sm border border-neutral-300 rounded-lg resize-none outline-none focus:border-neutral-500"
-          rows={4}
-        />
+        <div className="flex-1 flex flex-col justify-between min-h-0">
+          <div className="flex flex-col gap-[20px]">
+            <div className="px-[10px]">
+              <textarea
+                value={node.text}
+                onChange={(e) => updateNodeText(node.id, e.target.value)}
+                className="w-full min-h-[139px] p-[15px_20px] text-[15px] font-medium bg-surface-soft rounded-[14px] resize-none outline-none text-ink leading-[1.4]"
+                rows={4}
+              />
+            </div>
 
-        {node.origin === 'ai' && parent && (
-          <div className="flex flex-col gap-1 p-2 bg-neutral-50 rounded text-xs">
-            <div className="text-neutral-500">
-              Branched from:{' '}
-              <span className="text-neutral-700">{parent.text}</span>
-            </div>
-            <div className="text-neutral-500">
-              Lens:{' '}
-              <span className="text-neutral-700">
-                {node.steer ?? 'default'}
-              </span>
-            </div>
+            {isAI && (
+              <div className="flex flex-col">
+                {parent && (
+                  <div className="flex items-center gap-[5px] px-[20px] py-[10px] flex-wrap">
+                    <BranchIcon className="text-ink/60 shrink-0" />
+                    <span className="text-[14px] text-ink/60">
+                      Branched from:
+                    </span>
+                    <span className="text-[14px] font-medium text-ink">
+                      {parent.text}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-[5px] px-[20px] py-[10px]">
+                  <PromptIcon className="text-ink/60 shrink-0" />
+                  <span className="text-[14px] text-ink/60">Prompt:</span>
+                  <span className="text-[14px] font-medium text-ink">
+                    {node.steer ?? 'brainstorm ideas'}
+                  </span>
+                </div>
+                {parent && (
+                  <button
+                    onClick={() => {
+                      selectNode(parent.id)
+                      setSteerPrompt({
+                        nodeId: parent.id,
+                        defaultValue: node.steer ?? 'brainstorm ideas',
+                      })
+                    }}
+                    className="self-start ml-[20px] mt-[6px] text-[12px] text-ink/60 hover:text-ink underline underline-offset-2"
+                  >
+                    Re-branch with different lens
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-[10px] pt-[10px]">
             <button
               onClick={() => {
-                selectNode(parent.id)
-                setSteerPrompt({
-                  nodeId: parent.id,
-                  defaultValue: node.steer ?? 'brainstorm ideas',
-                })
+                if (hasActiveChildren) {
+                  selectNode(null)
+                } else {
+                  setSteerPrompt({
+                    nodeId: node.id,
+                    defaultValue: 'brainstorm ideas',
+                  })
+                }
               }}
-              className="self-start mt-1 text-neutral-600 hover:text-neutral-900 underline"
-            >
-              Re-branch with different lens
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          {!hasActiveChildren && (
-            <button
-              onClick={() =>
-                setSteerPrompt({
-                  nodeId: selectedNodeId,
-                  defaultValue: 'brainstorm ideas',
-                })
-              }
-              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50"
+              className="flex-1 px-[16px] py-[8px] text-[14px] font-medium bg-chip rounded-[8px] text-ink hover:bg-[#eee] transition-colors"
             >
               Expand
             </button>
-          )}
-          <button
-            onClick={() => {
-              dismissNode(selectedNodeId)
-              selectNode(null)
-            }}
-            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg text-red-500 hover:bg-red-50"
-          >
-            Dismiss
-          </button>
-        </div>
-
-        <div className="text-xs text-neutral-400 mt-auto">
-          Depth: {node.depth} · {node.childIds.length} children
+            <button
+              onClick={() => {
+                dismissNode(node.id)
+                selectNode(null)
+              }}
+              className="flex-1 px-[16px] py-[8px] text-[14px] font-medium bg-danger-soft rounded-[8px] text-danger hover:brightness-95 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

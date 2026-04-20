@@ -21,7 +21,7 @@ export function SeedInput() {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="What's on your mind?"
-        className="text-lg px-4 py-2 border border-neutral-300 rounded-lg outline-none focus:border-neutral-500"
+        className="text-lg px-6 py-4 rounded-full outline-none bg-white text-ink placeholder:text-ink/40 w-[28rem] max-w-[80vw]"
         autoFocus
       />
     </form>
