@@ -26,3 +26,56 @@ body,
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
+
+::selection {
+  background: color-mix(in srgb, var(--color-select) 25%, transparent);
+  color: var(--color-ink);
+}
+
+
+.prose-compose h1 { font-size: 1.375rem; font-weight: 600; margin: 0 0 0.75rem; letter-spacing: -0.01em; }
+.prose-compose h2 { font-size: 1.125rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+.prose-compose h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.4rem; }
+.prose-compose p { margin: 0 0 0.85rem; }
+.prose-compose ul,
+.prose-compose ol { margin: 0 0 0.85rem; padding-left: 1.25rem; }
+.prose-compose ul { list-style: disc; }
+.prose-compose ol { list-style: decimal; }
+.prose-compose li { margin: 0.2rem 0; }
+.prose-compose li > p { margin: 0; }
+.prose-compose strong { font-weight: 600; }
+.prose-compose em { font-style: italic; }
+.prose-compose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--color-chip);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+.prose-compose pre {
+  background: var(--color-chip);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0 0 0.85rem;
+}
+.prose-compose pre code { background: transparent; padding: 0; }
+.prose-compose blockquote {
+  border-left: 2px solid var(--color-line-neutral);
+  padding-left: 0.85rem;
+  margin: 0 0 0.85rem;
+  color: color-mix(in srgb, var(--color-ink) 70%, transparent);
+}
+.prose-compose a { color: var(--color-ink); text-decoration: underline; text-underline-offset: 2px; }
+.prose-compose hr { border: 0; border-top: 1px solid var(--color-line-neutral); margin: 1.25rem 0; }
+.prose-compose > :first-child { margin-top: 0; }
+.prose-compose > :last-child { margin-bottom: 0; }
+
+@keyframes shimmer-outline {
+  0%, 100% { outline-color: rgba(253, 165, 213, 0.3); }
+  50% { outline-color: rgba(253, 165, 213, 1); }
+}
+.shimmer-outline {
+  outline: 1.5px solid rgba(253, 165, 213, 0.3);
+  animation: shimmer-outline 1.2s ease-in-out infinite;
+}

@@ -57,7 +57,16 @@ export function Settings() {
   }
 
   const hasSelection = useBrainstormStore((s) => s.selectedNodeId !== null)
-  if (hasSelection) return null
+  const [hidden, setHidden] = useState(hasSelection)
+  useEffect(() => {
+    if (hasSelection) {
+      setHidden(true)
+      return
+    }
+    const t = setTimeout(() => setHidden(false), 200)
+    return () => clearTimeout(t)
+  }, [hasSelection])
+  if (hidden) return null
 
   return (
     <div className="fixed top-4 right-4 z-40 flex flex-col gap-2 items-end">

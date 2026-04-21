@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, LayoutGroup } from 'framer-motion'
 import { useBrainstormStore } from './store'
 import { usePhysics } from './lib/usePhysics'
 import { Canvas } from './components/Canvas'
@@ -32,29 +32,30 @@ function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [deleteSelection])
 
-  if (!hasSeed) {
-    return (
-      <div className="w-screen h-screen bg-canvas text-ink">
-        <SeedInput />
-      </div>
-    )
-  }
-
   return (
     <div className="w-screen h-screen bg-canvas text-ink">
-      <Canvas>
-        <Connections />
+      <LayoutGroup>
         <AnimatePresence>
-          {activeNodes.map((node) => (
-            <BubbleNode key={node.id} node={node} />
-          ))}
+          {!hasSeed && <SeedInput key="seed-input" />}
         </AnimatePresence>
-      </Canvas>
-      <NodeInput />
-      <ComposeButton />
-      <Settings />
-      <SidePanel />
-      <SelectionCount />
+        {hasSeed && (
+          <>
+            <Canvas>
+              <Connections />
+              <AnimatePresence>
+                {activeNodes.map((node) => (
+                  <BubbleNode key={node.id} node={node} />
+                ))}
+              </AnimatePresence>
+            </Canvas>
+            <NodeInput />
+            <ComposeButton />
+            <Settings />
+            <SidePanel />
+            <SelectionCount />
+          </>
+        )}
+      </LayoutGroup>
     </div>
   )
 }

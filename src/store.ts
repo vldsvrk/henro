@@ -27,6 +27,7 @@ interface BrainstormStore {
   isLoading: string | null
   mergeTarget: string | null
   composeResult: string | null
+  composeOpen: boolean
   pendingNodePosition: Position | null
   selectedNodeId: string | null
   selectedNodeIds: string[]
@@ -36,6 +37,7 @@ interface BrainstormStore {
   draggedNodeId: string | null
   steerPrompt: SteerPrompt | null
   pendingConnectionSource: string | null
+  seedNodeId: string | null
 
   setPendingConnectionSource: (id: string | null) => void
   setSteerPrompt: (prompt: SteerPrompt | null) => void
@@ -60,6 +62,8 @@ interface BrainstormStore {
   setMergeTarget: (id: string | null) => void
   setPendingNodePosition: (position: Position | null) => void
   compose: () => Promise<void>
+  openCompose: () => void
+  closeCompose: () => void
   clearComposeResult: () => void
   pan: (dx: number, dy: number) => void
   zoom: (delta: number, center: Position) => void
@@ -122,6 +126,7 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
   isLoading: null,
   mergeTarget: null,
   composeResult: null,
+  composeOpen: false,
   pendingNodePosition: null,
   selectedNodeId: null,
   selectedNodeIds: [],
@@ -131,6 +136,7 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
   draggedNodeId: null,
   steerPrompt: null,
   pendingConnectionSource: null,
+  seedNodeId: null,
 
   setPendingConnectionSource: (id) => set({ pendingConnectionSource: id }),
   setSteerPrompt: (prompt) => set({ steerPrompt: prompt }),
@@ -282,6 +288,7 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
   setSeed: (text) => {
     const id = crypto.randomUUID()
     set({
+      seedNodeId: id,
       nodes: {
         [id]: {
           id,
@@ -481,7 +488,7 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
     set({ isLoading: 'compose' })
     try {
       const result = await composeAI(activeTexts)
-      set({ composeResult: result, isLoading: null })
+      set({ composeResult: result, composeOpen: true, isLoading: null })
     } catch (err) {
       console.error('compose failed:', err)
       set({ isLoading: null })
@@ -489,7 +496,9 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
     }
   },
 
-  clearComposeResult: () => set({ composeResult: null }),
+  openCompose: () => set((s) => (s.composeResult ? { composeOpen: true } : s)),
+  closeCompose: () => set({ composeOpen: false }),
+  clearComposeResult: () => set({ composeResult: null, composeOpen: false }),
 
   pan: (dx, dy) => {
     set((s) => ({

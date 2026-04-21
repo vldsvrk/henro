@@ -4,19 +4,29 @@ import type { NodeData } from '../store'
 const LINE_SELECT = '#6BDEB9'
 const LINE_AI = '#FDA5D5'
 const LINE_DEFAULT = '#D5D5D5'
+// Perceptual bridge for the teal↔pink gradient — RGB interpolation between
+// those two passes through gray; a lavender midpoint keeps the transition warm.
+const BLEND_SELECT_AI = '#C8ABDD'
 
 function centerY(node: NodeData) {
   return node.position.y + (node.size.h || 60) / 2
+}
+
+function endpointColor(node: NodeData, isEndpointSelected: boolean) {
+  if (isEndpointSelected) return LINE_SELECT
+  return node.origin === 'ai' ? LINE_AI : LINE_DEFAULT
 }
 
 function ConnectionLine({
   a,
   b,
   isSelected,
+  selectedNodeIds,
 }: {
   a: NodeData
   b: NodeData
   isSelected: boolean
+  selectedNodeIds: Set<string>
 }) {
   const selectConnection = useBrainstormStore((s) => s.selectConnection)
 
@@ -25,38 +35,38 @@ function ConnectionLine({
   const x2 = b.position.x
   const y2 = centerY(b)
 
-  const mixed = a.origin !== b.origin
   const gradId = `grad-${a.id}-${b.id}`
+  const aColor = endpointColor(a, selectedNodeIds.has(a.id))
+  const bColor = endpointColor(b, selectedNodeIds.has(b.id))
+  const needsGradient = !isSelected && aColor !== bColor
 
   let strokeColor: string
   if (isSelected) {
     strokeColor = LINE_SELECT
-  } else if (mixed) {
+  } else if (needsGradient) {
     strokeColor = `url(#${gradId})`
-  } else if (a.origin === 'ai') {
-    strokeColor = LINE_AI
   } else {
-    strokeColor = LINE_DEFAULT
+    strokeColor = aColor
   }
-
-  // Gradient direction: user end → AI end
-  const userEnd = a.origin === 'user' ? a : b
-  const aiEnd = a.origin === 'ai' ? a : b
 
   return (
     <g>
-      {mixed && !isSelected && (
+      {needsGradient && (
         <defs>
           <linearGradient
             id={gradId}
             gradientUnits="userSpaceOnUse"
-            x1={userEnd.position.x}
-            y1={centerY(userEnd)}
-            x2={aiEnd.position.x}
-            y2={centerY(aiEnd)}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
           >
-            <stop offset="0%" stopColor={LINE_DEFAULT} />
-            <stop offset="100%" stopColor={LINE_AI} />
+            <stop offset="20%" stopColor={aColor} />
+            {((aColor === LINE_SELECT && bColor === LINE_AI) ||
+              (aColor === LINE_AI && bColor === LINE_SELECT)) && (
+              <stop offset="55%" stopColor={BLEND_SELECT_AI} />
+            )}
+            <stop offset="90%" stopColor={bColor} />
           </linearGradient>
         </defs>
       )}
@@ -93,7 +103,15 @@ export function Connections() {
   const connectionDrag = useBrainstormStore((s) => s.connectionDrag)
   const connections = useBrainstormStore((s) => s.connections)
   const selectedConnectionIds = useBrainstormStore((s) => s.selectedConnectionIds)
+  const selectedNodeIds = useBrainstormStore((s) => s.selectedNodeIds)
+  const pendingConnectionSource = useBrainstormStore((s) => s.pendingConnectionSource)
+  const pendingNodePosition = useBrainstormStore((s) => s.pendingNodePosition)
   const active = Object.values(nodes).filter((n) => n.status === 'active')
+  const selectedSet = new Set(selectedNodeIds)
+
+  const pendingSource = pendingConnectionSource
+    ? nodes[pendingConnectionSource]
+    : null
 
   const isConnSelected = (a: string, b: string) =>
     selectedConnectionIds.some(
@@ -117,6 +135,7 @@ export function Connections() {
             a={parent}
             b={node}
             isSelected={isConnSelected(parent.id, node.id)}
+            selectedNodeIds={selectedSet}
           />
         )
       })}
@@ -133,6 +152,7 @@ export function Connections() {
             a={n1}
             b={n2}
             isSelected={isConnSelected(id1, id2)}
+            selectedNodeIds={selectedSet}
           />
         )
       })}
@@ -143,6 +163,19 @@ export function Connections() {
           y1={centerY(nodes[connectionDrag.sourceId])}
           x2={connectionDrag.point.x}
           y2={connectionDrag.point.y}
+          stroke={LINE_DEFAULT}
+          strokeWidth={1.5}
+          strokeDasharray="6 4"
+          className="pointer-events-none"
+        />
+      )}
+      {/* Pending connection while typing the new node's text */}
+      {pendingSource && pendingNodePosition && (
+        <line
+          x1={pendingSource.position.x}
+          y1={centerY(pendingSource)}
+          x2={pendingNodePosition.x}
+          y2={pendingNodePosition.y}
           stroke={LINE_DEFAULT}
           strokeWidth={1.5}
           strokeDasharray="6 4"
