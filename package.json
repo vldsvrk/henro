@@ -1,8 +1,28 @@
 {
-  "name": "brainstorm-with-ai",
+  "name": "henro",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "description": "Brainstorming canvas that expands your ideas with AI. BYOK, local-only, no accounts.",
+  "homepage": "https://henro.space",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vldsvrk/henro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vldsvrk/henro/issues"
+  },
+  "author": "Vladyslav Savruk",
+  "license": "MIT",
+  "keywords": [
+    "brainstorm",
+    "ai",
+    "canvas",
+    "openrouter",
+    "react",
+    "vite",
+    "zustand"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

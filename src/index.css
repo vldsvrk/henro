@@ -33,18 +33,68 @@ body,
 }
 
 
-.prose-compose h1 { font-size: 1.375rem; font-weight: 600; margin: 0 0 0.75rem; letter-spacing: -0.01em; }
-.prose-compose h2 { font-size: 1.125rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
-.prose-compose h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.4rem; }
-.prose-compose p { margin: 0 0 0.85rem; }
+.prose-compose h1 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0 0 0.9rem;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+}
+
+.prose-compose h2 {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 1.75rem 0 0.65rem;
+  letter-spacing: -0.012em;
+  line-height: 1.35;
+}
+
+.prose-compose h3 {
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 1.4rem 0 0.5rem;
+  letter-spacing: -0.005em;
+  line-height: 1.4;
+}
+
+.prose-compose p {
+  margin: 0 0 1.05rem;
+}
+
 .prose-compose ul,
-.prose-compose ol { margin: 0 0 0.85rem; padding-left: 1.25rem; }
-.prose-compose ul { list-style: disc; }
-.prose-compose ol { list-style: decimal; }
-.prose-compose li { margin: 0.2rem 0; }
-.prose-compose li > p { margin: 0; }
-.prose-compose strong { font-weight: 600; }
-.prose-compose em { font-style: italic; }
+.prose-compose ol {
+  margin: 0 0 1.05rem;
+  padding-left: 1.4rem;
+}
+
+.prose-compose ul {
+  list-style: disc;
+}
+
+.prose-compose ol {
+  list-style: decimal;
+}
+
+.prose-compose li {
+  margin: 0.4rem 0;
+}
+
+.prose-compose li::marker {
+  color: color-mix(in srgb, var(--color-ink) 45%, transparent);
+}
+
+.prose-compose li>p {
+  margin: 0;
+}
+
+.prose-compose strong {
+  font-weight: 500;
+}
+
+.prose-compose em {
+  font-style: italic;
+}
+
 .prose-compose code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
@@ -52,6 +102,7 @@ body,
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
 }
+
 .prose-compose pre {
   background: var(--color-chip);
   padding: 0.75rem 1rem;
@@ -59,23 +110,84 @@ body,
   overflow-x: auto;
   margin: 0 0 0.85rem;
 }
-.prose-compose pre code { background: transparent; padding: 0; }
+
+.prose-compose pre code {
+  background: transparent;
+  padding: 0;
+}
+
 .prose-compose blockquote {
   border-left: 2px solid var(--color-line-neutral);
   padding-left: 0.85rem;
   margin: 0 0 0.85rem;
   color: color-mix(in srgb, var(--color-ink) 70%, transparent);
 }
-.prose-compose a { color: var(--color-ink); text-decoration: underline; text-underline-offset: 2px; }
-.prose-compose hr { border: 0; border-top: 1px solid var(--color-line-neutral); margin: 1.25rem 0; }
-.prose-compose > :first-child { margin-top: 0; }
-.prose-compose > :last-child { margin-bottom: 0; }
+
+.prose-compose a {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-compose hr {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-line-neutral) 40%, transparent);
+  margin: 1.25rem 0;
+}
+
+.prose-compose> :first-child {
+  margin-top: 0;
+}
+
+.prose-compose> :last-child {
+  margin-bottom: 0;
+}
 
 @keyframes shimmer-outline {
-  0%, 100% { outline-color: rgba(253, 165, 213, 0.3); }
-  50% { outline-color: rgba(253, 165, 213, 1); }
+
+  0%,
+  100% {
+    outline-color: rgba(253, 165, 213, 0.3);
+  }
+
+  50% {
+    outline-color: rgba(253, 165, 213, 1);
+  }
 }
+
 .shimmer-outline {
   outline: 1.5px solid rgba(253, 165, 213, 0.3);
   animation: shimmer-outline 1.2s ease-in-out infinite;
+}
+
+.scrollbar-soft {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-ink) 18%, transparent)
+    transparent;
+}
+
+.scrollbar-soft::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbar-soft::-webkit-scrollbar-track {
+  background: transparent;
+  border: 0;
+}
+
+.scrollbar-soft::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-ink) 18%, transparent);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+.scrollbar-soft::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-ink) 35%, transparent);
+  background-clip: content-box;
+}
+
+.scrollbar-soft::-webkit-scrollbar-corner {
+  background: transparent;
 }

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { AnimatePresence, LayoutGroup } from 'framer-motion'
 import { useBrainstormStore } from './store'
 import { usePhysics } from './lib/usePhysics'
+import { useHasApiKey } from './lib/config'
 import { Canvas } from './components/Canvas'
 import { Connections } from './components/Connections'
 import { BubbleNode } from './components/BubbleNode'
@@ -11,9 +12,13 @@ import { ComposeButton } from './components/ComposeButton'
 import { Settings } from './components/Settings'
 import { SidePanel } from './components/SidePanel'
 import { SelectionCount } from './components/SelectionCount'
+import { Toaster } from './components/Toaster'
+import { WelcomeScreen } from './components/WelcomeScreen'
+import { ProjectSwitcher } from './components/ProjectSwitcher'
 
 function App() {
   usePhysics()
+  const hasApiKey = useHasApiKey()
   const nodes = useBrainstormStore((s) => s.nodes)
   const deleteSelection = useBrainstormStore((s) => s.deleteSelection)
   const hasSeed = Object.keys(nodes).length > 0
@@ -35,27 +40,34 @@ function App() {
   return (
     <div className="w-screen h-screen bg-canvas text-ink">
       <LayoutGroup>
-        <AnimatePresence>
-          {!hasSeed && <SeedInput key="seed-input" />}
-        </AnimatePresence>
-        {hasSeed && (
+        {!hasApiKey && <WelcomeScreen />}
+        {hasApiKey && (
           <>
-            <Canvas>
-              <Connections />
-              <AnimatePresence>
-                {activeNodes.map((node) => (
-                  <BubbleNode key={node.id} node={node} />
-                ))}
-              </AnimatePresence>
-            </Canvas>
-            <NodeInput />
-            <ComposeButton />
+            <AnimatePresence>
+              {!hasSeed && <SeedInput key="seed-input" />}
+            </AnimatePresence>
+            {hasSeed && (
+              <>
+                <Canvas>
+                  <Connections />
+                  <AnimatePresence>
+                    {activeNodes.map((node) => (
+                      <BubbleNode key={node.id} node={node} />
+                    ))}
+                  </AnimatePresence>
+                </Canvas>
+                <NodeInput />
+                <ComposeButton />
+                <SidePanel />
+                <SelectionCount />
+              </>
+            )}
+            <ProjectSwitcher />
             <Settings />
-            <SidePanel />
-            <SelectionCount />
           </>
         )}
       </LayoutGroup>
+      <Toaster />
     </div>
   )
 }

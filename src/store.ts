@@ -1,7 +1,28 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { computeChildPositions, type Position, type NodeBox } from './lib/layout'
-import { generateBranches, mergeIdeas, compose as composeAI } from './lib/ai'
+import {
+  generateBranches,
+  mergeIdeas,
+  compose as composeAI,
+  generateProjectName,
+} from './lib/ai'
 import { CONTEXT_MAX_DEPTH, CONTEXT_MAX_NODES } from './lib/prompts'
+import { toastMessageForAiError } from './lib/errors'
+import { useToastStore } from './lib/toast'
+import {
+  henroStorage,
+  readProjectData,
+  deleteProjectStorage,
+  type ProjectMeta,
+} from './lib/persistence'
+
+function toastError(err: unknown) {
+  useToastStore.getState().push({
+    kind: 'error',
+    message: toastMessageForAiError(err),
+  })
+}
 
 export type NodeData = {
   id: string
@@ -21,6 +42,10 @@ export type SteerPrompt = {
   defaultValue: string
 }
 
+export type MergeAnim = {
+  placeholderId: string
+}
+
 interface BrainstormStore {
   nodes: Record<string, NodeData>
   viewport: { x: number; y: number; zoom: number }
@@ -38,6 +63,14 @@ interface BrainstormStore {
   steerPrompt: SteerPrompt | null
   pendingConnectionSource: string | null
   seedNodeId: string | null
+  mergeAnim: MergeAnim | null
+  currentProjectId: string | null
+  projectsIndex: ProjectMeta[]
+
+  newProject: (name?: string) => string
+  renameProject: (id: string, name: string) => void
+  deleteProject: (id: string) => void
+  switchProject: (id: string) => void
 
   setPendingConnectionSource: (id: string | null) => void
   setSteerPrompt: (prompt: SteerPrompt | null) => void
@@ -75,7 +108,7 @@ function getContextNodes(
   startId: string,
   maxDepth: number = CONTEXT_MAX_DEPTH,
   maxNodes: number = CONTEXT_MAX_NODES,
-): string[] {
+): { direct: string[]; wider: string[] } {
   // Unified adjacency — treat parent-child and user-drawn connections equally.
   const adj = new Map<string, Set<string>>()
   const link = (a: string, b: string) => {
@@ -97,10 +130,13 @@ function getContextNodes(
     }
   }
 
-  // BFS outward from the target; closest first.
+  // BFS outward from the target; closest first. Split depth-1 (direct) from
+  // further hops (wider background) so the AI knows what's immediately linked.
   const visited = new Set<string>([startId])
   const queue: { id: string; depth: number }[] = [{ id: startId, depth: 0 }]
-  const result: string[] = []
+  const direct: string[] = []
+  const wider: string[] = []
+  let total = 0
   while (queue.length > 0) {
     const { id, depth } = queue.shift()!
     if (depth >= maxDepth) continue
@@ -111,16 +147,37 @@ function getContextNodes(
       visited.add(nid)
       const text = nodes[nid]?.text
       if (text) {
-        result.push(text)
-        if (result.length >= maxNodes) return result
+        if (depth === 0) direct.push(text)
+        else wider.push(text)
+        total++
+        if (total >= maxNodes) return { direct, wider }
       }
       queue.push({ id: nid, depth: depth + 1 })
     }
   }
-  return result
+  return { direct, wider }
 }
 
-export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
+function freshEphemeralState() {
+  return {
+    selectedNodeId: null,
+    selectedNodeIds: [],
+    selectedConnectionIds: [],
+    connectionDrag: null,
+    draggedNodeId: null,
+    mergeTarget: null,
+    mergeAnim: null,
+    composeOpen: false,
+    pendingNodePosition: null,
+    pendingConnectionSource: null,
+    steerPrompt: null,
+    isLoading: null,
+  }
+}
+
+export const useBrainstormStore = create<BrainstormStore>()(
+  persist(
+    (set, get) => ({
   nodes: {},
   viewport: { x: 0, y: 0, zoom: 1 },
   isLoading: null,
@@ -137,6 +194,88 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
   steerPrompt: null,
   pendingConnectionSource: null,
   seedNodeId: null,
+  mergeAnim: null,
+  currentProjectId: null,
+  projectsIndex: [],
+
+  newProject: (name) => {
+    const id = crypto.randomUUID()
+    const now = Date.now()
+    set((s) => ({
+      currentProjectId: id,
+      projectsIndex: [
+        ...s.projectsIndex,
+        { id, name: name || 'Untitled', createdAt: now, updatedAt: now },
+      ],
+      nodes: {},
+      connections: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      seedNodeId: null,
+      composeResult: null,
+      ...freshEphemeralState(),
+    }))
+    return id
+  },
+
+  renameProject: (id, name) => {
+    const trimmed = name.trim() || 'Untitled'
+    set((s) => ({
+      projectsIndex: s.projectsIndex.map((p) =>
+        p.id === id ? { ...p, name: trimmed, updatedAt: Date.now() } : p,
+      ),
+    }))
+  },
+
+  deleteProject: (id) => {
+    const { currentProjectId, projectsIndex } = get()
+    deleteProjectStorage(id)
+    const nextIndex = projectsIndex.filter((p) => p.id !== id)
+    if (currentProjectId !== id) {
+      set({ projectsIndex: nextIndex })
+      return
+    }
+    if (nextIndex.length === 0) {
+      set({ projectsIndex: nextIndex, currentProjectId: null })
+      get().newProject()
+      return
+    }
+    const target = nextIndex[0]
+    const data = readProjectData(target.id)
+    set({
+      projectsIndex: nextIndex,
+      currentProjectId: target.id,
+      nodes: (data?.nodes as Record<string, NodeData>) ?? {},
+      connections: (data?.connections as [string, string][]) ?? [],
+      viewport:
+        (data?.viewport as { x: number; y: number; zoom: number }) ?? {
+          x: 0,
+          y: 0,
+          zoom: 1,
+        },
+      seedNodeId: (data?.seedNodeId as string | null) ?? null,
+      composeResult: (data?.composeResult as string | null) ?? null,
+      ...freshEphemeralState(),
+    })
+  },
+
+  switchProject: (id) => {
+    if (get().currentProjectId === id) return
+    const data = readProjectData(id)
+    set({
+      currentProjectId: id,
+      nodes: (data?.nodes as Record<string, NodeData>) ?? {},
+      connections: (data?.connections as [string, string][]) ?? [],
+      viewport:
+        (data?.viewport as { x: number; y: number; zoom: number }) ?? {
+          x: 0,
+          y: 0,
+          zoom: 1,
+        },
+      seedNodeId: (data?.seedNodeId as string | null) ?? null,
+      composeResult: (data?.composeResult as string | null) ?? null,
+      ...freshEphemeralState(),
+    })
+  },
 
   setPendingConnectionSource: (id) => set({ pendingConnectionSource: id }),
   setSteerPrompt: (prompt) => set({ steerPrompt: prompt }),
@@ -303,6 +442,23 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
         },
       },
     })
+
+    const { currentProjectId, projectsIndex } = get()
+    if (!currentProjectId) return
+    const current = projectsIndex.find((p) => p.id === currentProjectId)
+    if (!current || current.name !== 'Untitled') return
+
+    generateProjectName(text)
+      .then((name) => {
+        if (!name) return
+        const cur = get().projectsIndex.find((p) => p.id === currentProjectId)
+        if (cur?.name === 'Untitled') {
+          get().renameProject(currentProjectId, name)
+        }
+      })
+      .catch((err) => {
+        console.warn('project auto-name failed:', err)
+      })
   },
 
   expandNode: async (id, steer) => {
@@ -313,8 +469,13 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
     set({ isLoading: id, steerPrompt: null })
 
     try {
-      const contextNodes = getContextNodes(state.nodes, state.connections, id)
-      const branches = await generateBranches(node.text, contextNodes, steer)
+      const context = getContextNodes(state.nodes, state.connections, id)
+      const branches = await generateBranches(
+        node.text,
+        context.direct,
+        context.wider,
+        steer,
+      )
 
       const grandparent = node.parentId ? state.nodes[node.parentId] : null
       const occupied: NodeBox[] = Object.values(get().nodes)
@@ -355,7 +516,7 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
     } catch (err) {
       console.error('expandNode failed:', err)
       set({ isLoading: null })
-      alert(err instanceof Error ? err.message : 'Failed to generate branches')
+      toastError(err)
     }
   },
 
@@ -384,39 +545,70 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
     const node2 = state.nodes[id2]
     if (!node1 || !node2 || state.isLoading) return
 
-    set({ isLoading: 'merge' })
+    const midpoint: Position = {
+      x: (node1.position.x + node2.position.x) / 2,
+      y: (node1.position.y + node2.position.y) / 2,
+    }
+    const depth = Math.min(node1.depth, node2.depth)
+    const placeholderId = crypto.randomUUID()
 
-    try {
-      const mergedText = await mergeIdeas(node1.text, node2.text)
-
-      const position: Position = {
-        x: (node1.position.x + node2.position.x) / 2,
-        y: (node1.position.y + node2.position.y) / 2,
-      }
-
-      const mergedNode: NodeData = {
-        id: crypto.randomUUID(),
-        text: mergedText,
+    // Instant dismiss both originals; spawn shimmering placeholder at midpoint.
+    set((s) => {
+      const newNodes = { ...s.nodes }
+      newNodes[id1] = { ...newNodes[id1], status: 'dismissed' }
+      newNodes[id2] = { ...newNodes[id2], status: 'dismissed' }
+      newNodes[placeholderId] = {
+        id: placeholderId,
+        text: '',
         parentId: null,
         childIds: [],
-        position,
+        position: midpoint,
         size: { w: 0, h: 0 },
         status: 'active',
         origin: 'ai',
-        depth: Math.min(node1.depth, node2.depth),
+        depth,
       }
+      return {
+        nodes: newNodes,
+        isLoading: 'merge',
+        mergeTarget: null,
+        mergeAnim: { placeholderId },
+      }
+    })
 
+    try {
+      const mergedText = await mergeIdeas(node1.text, node2.text)
       set((s) => {
         const newNodes = { ...s.nodes }
-        newNodes[id1] = { ...newNodes[id1], status: 'dismissed' }
-        newNodes[id2] = { ...newNodes[id2], status: 'dismissed' }
-        newNodes[mergedNode.id] = mergedNode
-        return { nodes: newNodes, isLoading: null, mergeTarget: null }
+        if (newNodes[placeholderId]) {
+          newNodes[placeholderId] = {
+            ...newNodes[placeholderId],
+            text: mergedText,
+          }
+        }
+        return {
+          nodes: newNodes,
+          isLoading: null,
+          mergeTarget: null,
+          mergeAnim: null,
+        }
       })
     } catch (err) {
       console.error('mergeNodes failed:', err)
-      set({ isLoading: null, mergeTarget: null })
-      alert(err instanceof Error ? err.message : 'Failed to merge ideas')
+      // Rollback: drop placeholder, un-dismiss originals.
+      set((s) => {
+        const newNodes = { ...s.nodes }
+        if (newNodes[placeholderId]) delete newNodes[placeholderId]
+        if (newNodes[id1]) newNodes[id1] = { ...newNodes[id1], status: 'active' }
+        if (newNodes[id2]) newNodes[id2] = { ...newNodes[id2], status: 'active' }
+        return {
+          nodes: newNodes,
+          isLoading: null,
+          mergeTarget: null,
+          mergeAnim: null,
+        }
+      })
+      toastError(err)
     }
   },
 
@@ -492,7 +684,7 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
     } catch (err) {
       console.error('compose failed:', err)
       set({ isLoading: null })
-      alert(err instanceof Error ? err.message : 'Failed to compose')
+      toastError(err)
     }
   },
 
@@ -525,4 +717,25 @@ export const useBrainstormStore = create<BrainstormStore>((set, get) => ({
       return { viewport: { x: newX, y: newY, zoom: newZoom } }
     })
   },
-}))
+    }),
+    {
+      name: 'henro',
+      version: 1,
+      storage: createJSONStorage(() => henroStorage),
+      partialize: (s) => ({
+        nodes: s.nodes,
+        connections: s.connections,
+        viewport: s.viewport,
+        seedNodeId: s.seedNodeId,
+        composeResult: s.composeResult,
+        currentProjectId: s.currentProjectId,
+        projectsIndex: s.projectsIndex,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.projectsIndex.length === 0) {
+          state.newProject()
+        }
+      },
+    },
+  ),
+)

@@ -1,1 +1,0 @@
-/Users/vldsvrk/Documents/obsidian personal/Ideas Brainstorm App.md

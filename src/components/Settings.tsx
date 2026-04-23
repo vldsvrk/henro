@@ -7,22 +7,10 @@ import {
   DEFAULT_SYSTEM_PROMPT,
   type PresetKey,
 } from '../lib/prompts'
+import { readConfig, writeConfig } from '../lib/config'
+import { BranchIcon } from './icons'
 
-const CONFIG_KEY = 'openrouter-config'
 const DEFAULT_MODEL = 'anthropic/claude-sonnet-4.5'
-
-function loadConfig() {
-  try {
-    const stored = localStorage.getItem(CONFIG_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch {}
-  return {
-    apiKey: '',
-    model: DEFAULT_MODEL,
-    branchCount: DEFAULT_BRANCH_COUNT,
-    systemPrompt: DEFAULT_SYSTEM_PROMPT,
-  }
-}
 
 export function Settings() {
   const [showAI, setShowAI] = useState(false)
@@ -32,7 +20,7 @@ export function Settings() {
   const [systemPrompt, setSystemPrompt] = useState<string>(DEFAULT_SYSTEM_PROMPT)
 
   useEffect(() => {
-    const c = loadConfig()
+    const c = readConfig()
     setApiKey(c.apiKey || '')
     setModel(c.model || DEFAULT_MODEL)
     const n = Number(c.branchCount)
@@ -45,11 +33,15 @@ export function Settings() {
   }, [])
 
   function saveConfig() {
-    localStorage.setItem(
-      CONFIG_KEY,
-      JSON.stringify({ apiKey, model, branchCount, systemPrompt }),
-    )
+    writeConfig({ apiKey, model, branchCount, systemPrompt })
     setShowAI(false)
+  }
+
+  function adjustBranch(delta: number) {
+    const next = Math.min(10, Math.max(1, branchCount + delta))
+    if (next === branchCount) return
+    setBranchCount(next)
+    writeConfig({ branchCount: next })
   }
 
   function loadPreset(key: PresetKey) {
@@ -70,20 +62,57 @@ export function Settings() {
 
   return (
     <div className="fixed top-4 right-4 z-40 flex flex-col gap-2 items-end">
-      <button
-        onClick={() => setShowAI(!showAI)}
-        className={`px-[14px] py-[6px] text-[12px] font-medium rounded-[10px] transition-colors ${
-          showAI
-            ? 'bg-ink text-white'
-            : 'bg-white text-ink hover:bg-chip'
-        }`}
-      >
-        AI
-      </button>
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center h-[28px] bg-white rounded-[10px] px-[4px]"
+          title="Branches per expansion"
+        >
+          <button
+            onClick={() => adjustBranch(-1)}
+            disabled={branchCount <= 1}
+            aria-label="Decrease branches"
+            className="w-[22px] h-[22px] flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 transition-colors text-[14px] leading-none"
+          >
+            −
+          </button>
+          <span className="flex items-center gap-[4px] px-[4px] text-[12px] font-medium text-ink min-w-[26px] justify-center">
+            <BranchIcon className="w-[11px] h-[11px] text-ink/50" />
+            {branchCount}
+          </span>
+          <button
+            onClick={() => adjustBranch(1)}
+            disabled={branchCount >= 10}
+            aria-label="Increase branches"
+            className="w-[22px] h-[22px] flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 transition-colors text-[14px] leading-none"
+          >
+            +
+          </button>
+        </div>
+        <button
+          onClick={() => setShowAI(!showAI)}
+          className={`h-[28px] px-[14px] text-[12px] font-medium rounded-[10px] transition-colors ${
+            showAI
+              ? 'bg-ink text-white'
+              : 'bg-white text-ink hover:bg-chip'
+          }`}
+        >
+          AI
+        </button>
+      </div>
 
       {showAI && (
         <div className="bg-white rounded-[13px] p-[14px] w-[320px] flex flex-col gap-[10px] max-h-[80vh] overflow-y-auto">
-          <label className="text-[12px] text-ink/60">OpenRouter API Key</label>
+          <div className="flex items-center justify-between">
+            <label className="text-[12px] text-ink/60">OpenRouter API Key</label>
+            <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-ink/50 hover:text-ink underline underline-offset-2"
+            >
+              Get a key →
+            </a>
+          </div>
           <input
             type="password"
             value={apiKey}
@@ -99,23 +128,6 @@ export function Settings() {
             onChange={(e) => setModel(e.target.value)}
             placeholder="anthropic/claude-sonnet-4.5"
             className="text-[13px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-full outline-none text-ink placeholder:text-ink/40"
-          />
-
-          <label className="text-[12px] text-ink/60">Branches per expansion</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={branchCount}
-            onChange={(e) => {
-              const n = Number(e.target.value)
-              setBranchCount(
-                Number.isFinite(n) && n > 0
-                  ? Math.min(10, Math.max(1, Math.floor(n)))
-                  : DEFAULT_BRANCH_COUNT,
-              )
-            }}
-            className="text-[13px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-[96px] outline-none text-ink"
           />
 
           <label className="text-[12px] text-ink/60 mt-[4px]">System prompt</label>

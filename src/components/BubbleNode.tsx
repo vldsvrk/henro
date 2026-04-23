@@ -29,6 +29,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
   const nodes = useBrainstormStore((s) => s.nodes)
   const viewport = useBrainstormStore((s) => s.viewport)
   const isLoading = useBrainstormStore((s) => s.isLoading)
+  const mergeAnim = useBrainstormStore((s) => s.mergeAnim)
   const setNodeSize = useBrainstormStore((s) => s.setNodeSize)
   const setDraggedNode = useBrainstormStore((s) => s.setDraggedNode)
   const setPendingNodePosition = useBrainstormStore((s) => s.setPendingNodePosition)
@@ -278,13 +279,16 @@ export function BubbleNode({ node }: { node: NodeData }) {
     connectionDrag && connectionDrag.sourceId !== node.id && isMergeHighlight
   const isBeingDragged = draggedNodeId === node.id
 
-  const outerStyle = {
+  const isMergePlaceholder = mergeAnim?.placeholderId === node.id
+
+  const outerStyle: React.CSSProperties = {
     left: Math.round(node.position.x),
     top: Math.round(node.position.y),
     transform: 'translate(-50%, 0) translateZ(0)',
     width: NODE_WIDTH,
     zIndex: isDragging.current ? 10 : 1,
-    willChange: 'left, top' as const,
+    willChange: 'left, top',
+    ...(isMergePlaceholder ? { pointerEvents: 'none' as const } : {}),
   }
 
   // During morph: shell morphs via layoutId. Text crossfades in separately
@@ -334,7 +338,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
                 ? 'outline outline-[1px] outline-ai'
                 : ''
           }
-          ${isExpandLoading ? 'shimmer-outline' : ''}
+          ${isExpandLoading || isMergePlaceholder ? 'shimmer-outline' : ''}
         `}
       >
         <div
@@ -347,9 +351,9 @@ export function BubbleNode({ node }: { node: NodeData }) {
             ref={textRef}
             className={`text-[12px] leading-[1.4] break-words ${
               applyClamp ? 'line-clamp-4' : 'block'
-            }`}
+            } ${isMergePlaceholder && !node.text ? 'text-ink/50 italic' : ''}`}
           >
-            {node.text}
+            {node.text || (isMergePlaceholder ? 'Merging ideas…' : '')}
           </span>
         </div>
         <span
@@ -359,7 +363,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
         >
           {node.text}
         </span>
-        {!isExpandLoading && (
+        {!isExpandLoading && !isMergePlaceholder && (
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDismiss}

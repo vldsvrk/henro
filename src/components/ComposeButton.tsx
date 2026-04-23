@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import { useBrainstormStore } from '../store'
+import { useToastStore } from '../lib/toast'
 
 export function ComposeButton() {
   const compose = useBrainstormStore((s) => s.compose)
@@ -59,13 +60,21 @@ export function ComposeButton() {
 
   const copyPlain = async () => {
     if (!composeResult) return
-    await navigator.clipboard.writeText(stripMd(composeResult))
-    setCopied('text')
+    try {
+      await navigator.clipboard.writeText(stripMd(composeResult))
+      setCopied('text')
+    } catch {
+      useToastStore.getState().push({ kind: 'error', message: 'Could not copy — clipboard blocked.' })
+    }
   }
   const copyMd = async () => {
     if (!composeResult) return
-    await navigator.clipboard.writeText(composeResult)
-    setCopied('md')
+    try {
+      await navigator.clipboard.writeText(composeResult)
+      setCopied('md')
+    } catch {
+      useToastStore.getState().push({ kind: 'error', message: 'Could not copy — clipboard blocked.' })
+    }
   }
 
   return (
@@ -97,48 +106,54 @@ export function ComposeButton() {
               exit={{ opacity: 0, y: 8, scale: 0.98 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[13px] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+              className="relative bg-white rounded-[13px] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between px-[20px] py-[15px] border-b border-[var(--color-line-neutral)]/60">
-                <span className="text-sm text-ink/60">Composition</span>
-                <button
-                  onClick={closeCompose}
-                  aria-label="Close"
-                  className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-ink/60 hover:text-ink hover:bg-chip transition-colors"
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-[24px] py-[20px]">
-                <div className="prose-compose text-[15px] text-ink leading-[1.6]">
+              <div className="flex-1 overflow-y-auto scrollbar-soft px-[36px] pt-[80px] pb-[88px]">
+                <div className="prose-compose text-[15px] text-ink leading-[1.7]">
                   <ReactMarkdown>{composeResult}</ReactMarkdown>
                 </div>
               </div>
 
-              <div className="flex items-center gap-[8px] px-[16px] py-[12px] border-t border-[var(--color-line-neutral)]/60 bg-surface-soft">
-                <button
-                  onClick={copyPlain}
-                  className="px-[14px] py-[7px] rounded-[8px] bg-chip hover:bg-[#eee] text-[13px] font-medium text-ink transition-colors"
-                >
-                  {copied === 'text' ? 'Copied' : 'Copy'}
-                </button>
-                <button
-                  onClick={copyMd}
-                  className="px-[14px] py-[7px] rounded-[8px] bg-chip hover:bg-[#eee] text-[13px] font-medium text-ink transition-colors"
-                >
-                  {copied === 'md' ? 'Copied' : 'Copy as Markdown'}
-                </button>
-                <div className="flex-1" />
-                <button
-                  onClick={compose}
-                  disabled={composing}
-                  className="px-[14px] py-[7px] rounded-[8px] bg-ink hover:opacity-90 text-[13px] font-medium text-white disabled:opacity-50 transition-opacity"
-                >
-                  {composing ? 'Regenerating...' : 'Regenerate'}
-                </button>
+              <div className="absolute left-0 right-[10px] top-0 pointer-events-none">
+                <div className="bg-white flex items-center justify-between pl-[34px] pr-[24px] py-[16px] pointer-events-auto">
+                  <span className="text-[14px] text-ink/60">Summary</span>
+                  <button
+                    onClick={closeCompose}
+                    aria-label="Close"
+                    className="w-[24px] h-[24px] rounded-[8px] flex items-center justify-center text-ink/60 hover:text-ink hover:bg-chip transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                      <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="h-[40px] bg-gradient-to-b from-white to-white/0" />
+              </div>
+
+              <div className="absolute left-0 right-[10px] bottom-0 pointer-events-none">
+                <div className="h-[40px] bg-gradient-to-b from-white/0 to-white" />
+                <div className="bg-white flex items-center gap-[8px] px-[20px] pb-[14px] pt-[4px] pointer-events-auto">
+                  <button
+                    onClick={copyPlain}
+                    className="px-[14px] py-[7px] rounded-[8px] bg-chip hover:bg-[#eee] text-[13px] font-medium text-ink transition-colors"
+                  >
+                    {copied === 'text' ? 'Copied' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={copyMd}
+                    className="px-[14px] py-[7px] rounded-[8px] bg-chip hover:bg-[#eee] text-[13px] font-medium text-ink transition-colors"
+                  >
+                    {copied === 'md' ? 'Copied' : 'Copy as Markdown'}
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={compose}
+                    disabled={composing}
+                    className="px-[14px] py-[7px] rounded-[8px] bg-ink hover:opacity-90 text-[13px] font-medium text-white disabled:opacity-50 transition-opacity"
+                  >
+                    {composing ? 'Regenerating...' : 'Regenerate'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
