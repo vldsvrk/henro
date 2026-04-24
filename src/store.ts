@@ -46,6 +46,27 @@ export type MergeAnim = {
   placeholderId: string
 }
 
+type HistoryFrame = {
+  nodes: Record<string, NodeData>
+  connections: [string, string][]
+  seedNodeId: string | null
+}
+
+const MAX_HISTORY = 50
+
+function snapshot(s: {
+  nodes: Record<string, NodeData>
+  connections: [string, string][]
+  seedNodeId: string | null
+}): HistoryFrame {
+  return { nodes: s.nodes, connections: s.connections, seedNodeId: s.seedNodeId }
+}
+
+function appendCapped(arr: HistoryFrame[], frame: HistoryFrame): HistoryFrame[] {
+  const next = [...arr, frame]
+  return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next
+}
+
 interface BrainstormStore {
   nodes: Record<string, NodeData>
   viewport: { x: number; y: number; zoom: number }
@@ -66,6 +87,14 @@ interface BrainstormStore {
   mergeAnim: MergeAnim | null
   currentProjectId: string | null
   projectsIndex: ProjectMeta[]
+  past: HistoryFrame[]
+  future: HistoryFrame[]
+  pendingEdit: { nodeId: string; snapshot: HistoryFrame } | null
+
+  undo: () => void
+  redo: () => void
+  beginTextEdit: (id: string) => void
+  commitTextEdit: () => void
 
   newProject: (name?: string) => string
   renameProject: (id: string, name: string) => void
@@ -158,6 +187,46 @@ function getContextNodes(
   return { direct, wider }
 }
 
+function segmentIntersectsRect(
+  p1: Position,
+  p2: Position,
+  rect: { x: number; y: number; w: number; h: number },
+): boolean {
+  const { x, y, w, h } = rect
+  const x2 = x + w
+  const y2 = y + h
+  const inside = (p: Position) =>
+    p.x >= x && p.x <= x2 && p.y >= y && p.y <= y2
+  if (inside(p1) || inside(p2)) return true
+
+  const segCross = (
+    a: Position,
+    b: Position,
+    c: Position,
+    d: Position,
+  ): boolean => {
+    const d1 = (d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x)
+    const d2 = (d.x - c.x) * (b.y - c.y) - (d.y - c.y) * (b.x - c.x)
+    const d3 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+    const d4 = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x)
+    return (
+      ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+    )
+  }
+
+  const tl = { x, y }
+  const tr = { x: x2, y }
+  const br = { x: x2, y: y2 }
+  const bl = { x, y: y2 }
+  return (
+    segCross(p1, p2, tl, tr) ||
+    segCross(p1, p2, tr, br) ||
+    segCross(p1, p2, br, bl) ||
+    segCross(p1, p2, bl, tl)
+  )
+}
+
 function freshEphemeralState() {
   return {
     selectedNodeId: null,
@@ -197,6 +266,67 @@ export const useBrainstormStore = create<BrainstormStore>()(
   mergeAnim: null,
   currentProjectId: null,
   projectsIndex: [],
+  past: [],
+  future: [],
+  pendingEdit: null,
+
+  beginTextEdit: (id) => {
+    const s = get()
+    if (s.pendingEdit && s.pendingEdit.nodeId !== id) {
+      get().commitTextEdit()
+    }
+    if (get().pendingEdit?.nodeId === id) return
+    const cur = get()
+    set({ pendingEdit: { nodeId: id, snapshot: snapshot(cur) } })
+  },
+
+  commitTextEdit: () => {
+    const s = get()
+    if (!s.pendingEdit) return
+    const before = s.pendingEdit.snapshot.nodes[s.pendingEdit.nodeId]?.text
+    const after = s.nodes[s.pendingEdit.nodeId]?.text
+    if (before === after) {
+      set({ pendingEdit: null })
+      return
+    }
+    set((cur) => ({
+      past: appendCapped(cur.past, s.pendingEdit!.snapshot),
+      future: [],
+      pendingEdit: null,
+    }))
+  },
+
+  undo: () => {
+    const s = get()
+    if (s.isLoading) return
+    if (s.pendingEdit) get().commitTextEdit()
+    const s2 = get()
+    if (s2.past.length === 0) return
+    const prev = s2.past[s2.past.length - 1]
+    set({
+      past: s2.past.slice(0, -1),
+      future: [...s2.future, snapshot(s2)],
+      nodes: prev.nodes,
+      connections: prev.connections,
+      seedNodeId: prev.seedNodeId,
+      ...freshEphemeralState(),
+    })
+  },
+
+  redo: () => {
+    const s = get()
+    if (s.isLoading || s.future.length === 0) return
+    if (s.pendingEdit) set({ pendingEdit: null })
+    const next = s.future[s.future.length - 1]
+    set({
+      future: s.future.slice(0, -1),
+      past: appendCapped(s.past, snapshot(s)),
+      nodes: next.nodes,
+      connections: next.connections,
+      seedNodeId: next.seedNodeId,
+      ...freshEphemeralState(),
+    })
+  },
 
   newProject: (name) => {
     const id = crypto.randomUUID()
@@ -212,6 +342,9 @@ export const useBrainstormStore = create<BrainstormStore>()(
       viewport: { x: 0, y: 0, zoom: 1 },
       seedNodeId: null,
       composeResult: null,
+      past: [],
+      future: [],
+      pendingEdit: null,
       ...freshEphemeralState(),
     }))
     return id
@@ -254,6 +387,9 @@ export const useBrainstormStore = create<BrainstormStore>()(
         },
       seedNodeId: (data?.seedNodeId as string | null) ?? null,
       composeResult: (data?.composeResult as string | null) ?? null,
+      past: [],
+      future: [],
+      pendingEdit: null,
       ...freshEphemeralState(),
     })
   },
@@ -273,6 +409,9 @@ export const useBrainstormStore = create<BrainstormStore>()(
         },
       seedNodeId: (data?.seedNodeId as string | null) ?? null,
       composeResult: (data?.composeResult as string | null) ?? null,
+      past: [],
+      future: [],
+      pendingEdit: null,
       ...freshEphemeralState(),
     })
   },
@@ -285,16 +424,30 @@ export const useBrainstormStore = create<BrainstormStore>()(
         ([a, b]) => (a === id1 && b === id2) || (a === id2 && b === id1),
       )
       if (exists) return s
-      return { connections: [...s.connections, [id1, id2]] }
+      return {
+        connections: [...s.connections, [id1, id2]],
+        past: appendCapped(s.past, snapshot(s)),
+        future: [],
+      }
     }),
   removeConnection: (id1, id2) =>
-    set((s) => ({
-      connections: s.connections.filter(
+    set((s) => {
+      const filtered = s.connections.filter(
         ([a, b]) => !(a === id1 && b === id2) && !(a === id2 && b === id1),
-      ),
-    })),
-  selectNode: (id) => set({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedConnectionIds: [] }),
-  toggleNodeSelected: (id) =>
+      )
+      if (filtered.length === s.connections.length) return s
+      return {
+        connections: filtered,
+        past: appendCapped(s.past, snapshot(s)),
+        future: [],
+      }
+    }),
+  selectNode: (id) => {
+    get().commitTextEdit()
+    set({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedConnectionIds: [] })
+  },
+  toggleNodeSelected: (id) => {
+    get().commitTextEdit()
     set((s) => {
       const has = s.selectedNodeIds.includes(id)
       const nextIds = has
@@ -305,13 +458,16 @@ export const useBrainstormStore = create<BrainstormStore>()(
         selectedNodeId: nextIds.length === 1 ? nextIds[0] : null,
         selectedConnectionIds: [],
       }
-    }),
-  selectConnection: (conn) =>
+    })
+  },
+  selectConnection: (conn) => {
+    get().commitTextEdit()
     set({
       selectedConnectionIds: conn ? [conn] : [],
       selectedNodeId: null,
       selectedNodeIds: [],
-    }),
+    })
+  },
   selectInRect: (rect) =>
     set((s) => {
       const activeNodes = Object.values(s.nodes).filter((n) => n.status === 'active')
@@ -324,31 +480,40 @@ export const useBrainstormStore = create<BrainstormStore>()(
             n.position.y <= rect.y + rect.h,
         )
         .map((n) => n.id)
-      const idSet = new Set(ids)
 
+      // Include any connection whose line crosses the rect — lets the user
+      // lasso just the link between two nodes without grabbing either node.
       const connIds: Array<[string, string]> = []
-      for (const id of ids) {
-        const n = s.nodes[id]
-        if (n.parentId && idSet.has(n.parentId)) {
-          connIds.push([n.parentId, id])
-        }
-      }
-      for (const [a, b] of s.connections) {
-        if (idSet.has(a) && idSet.has(b)) {
+      const seen = new Set<string>()
+      const consider = (a: string, b: string) => {
+        const na = s.nodes[a]
+        const nb = s.nodes[b]
+        if (!na || !nb || na.status !== 'active' || nb.status !== 'active') return
+        const key = a < b ? `${a}|${b}` : `${b}|${a}`
+        if (seen.has(key)) return
+        if (segmentIntersectsRect(na.position, nb.position, rect)) {
+          seen.add(key)
           connIds.push([a, b])
         }
       }
+      for (const n of activeNodes) {
+        if (n.parentId) consider(n.parentId, n.id)
+      }
+      for (const [a, b] of s.connections) consider(a, b)
+
       return {
         selectedNodeIds: ids,
         selectedNodeId: ids.length === 1 ? ids[0] : null,
         selectedConnectionIds: connIds,
       }
     }),
-  deleteSelection: () =>
+  deleteSelection: () => {
+    get().commitTextEdit()
     set((s) => {
       const hasConns = s.selectedConnectionIds.length > 0
       const hasNodes = s.selectedNodeIds.length > 0
       if (!hasConns && !hasNodes) return s
+      const preSnap = snapshot(s)
 
       const newNodes = { ...s.nodes }
       let newConnections = s.connections
@@ -412,8 +577,11 @@ export const useBrainstormStore = create<BrainstormStore>()(
         selectedNodeId: null,
         selectedNodeIds: [],
         selectedConnectionIds: [],
+        past: appendCapped(s.past, preSnap),
+        future: [],
       }
-    }),
+    })
+  },
   setConnectionDrag: (drag) => set({ connectionDrag: drag }),
   updateNodeText: (id, text) =>
     set((s) => ({
@@ -426,7 +594,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
 
   setSeed: (text) => {
     const id = crypto.randomUUID()
-    set({
+    set((s) => ({
       seedNodeId: id,
       nodes: {
         [id]: {
@@ -441,7 +609,9 @@ export const useBrainstormStore = create<BrainstormStore>()(
           depth: 0,
         },
       },
-    })
+      past: appendCapped(s.past, snapshot(s)),
+      future: [],
+    }))
 
     const { currentProjectId, projectsIndex } = get()
     if (!currentProjectId) return
@@ -465,6 +635,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
     const state = get()
     const node = state.nodes[id]
     if (!node || state.isLoading) return
+    const preSnap = snapshot(state)
 
     set({ isLoading: id, steerPrompt: null })
 
@@ -511,7 +682,12 @@ export const useBrainstormStore = create<BrainstormStore>()(
           ...newNodes[id],
           childIds: [...newNodes[id].childIds, ...children.map((c) => c.id)],
         }
-        return { nodes: newNodes, isLoading: null }
+        return {
+          nodes: newNodes,
+          isLoading: null,
+          past: appendCapped(s.past, preSnap),
+          future: [],
+        }
       })
     } catch (err) {
       console.error('expandNode failed:', err)
@@ -521,10 +697,12 @@ export const useBrainstormStore = create<BrainstormStore>()(
   },
 
   dismissNode: (id) => {
+    get().commitTextEdit()
     set((s) => {
       const newNodes = { ...s.nodes }
       const node = newNodes[id]
       if (!node) return s
+      const preSnap = snapshot(s)
       // Orphan children (keep them alive, just detach)
       node.childIds.forEach((childId) => {
         if (newNodes[childId]) newNodes[childId] = { ...newNodes[childId], parentId: null }
@@ -535,7 +713,11 @@ export const useBrainstormStore = create<BrainstormStore>()(
         newNodes[node.parentId] = { ...parent, childIds: parent.childIds.filter((c) => c !== id) }
       }
       newNodes[id] = { ...node, status: 'dismissed', childIds: [] }
-      return { nodes: newNodes }
+      return {
+        nodes: newNodes,
+        past: appendCapped(s.past, preSnap),
+        future: [],
+      }
     })
   },
 
@@ -544,6 +726,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
     const node1 = state.nodes[id1]
     const node2 = state.nodes[id2]
     if (!node1 || !node2 || state.isLoading) return
+    const preSnap = snapshot(state)
 
     const midpoint: Position = {
       x: (node1.position.x + node2.position.x) / 2,
@@ -591,6 +774,8 @@ export const useBrainstormStore = create<BrainstormStore>()(
           isLoading: null,
           mergeTarget: null,
           mergeAnim: null,
+          past: appendCapped(s.past, preSnap),
+          future: [],
         }
       })
     } catch (err) {
@@ -637,6 +822,8 @@ export const useBrainstormStore = create<BrainstormStore>()(
         connections: newConnections,
         pendingNodePosition: null,
         pendingConnectionSource: null,
+        past: appendCapped(s.past, snapshot(s)),
+        future: [],
       }
     })
   },
@@ -661,7 +848,17 @@ export const useBrainstormStore = create<BrainstormStore>()(
       return { nodes: newNodes }
     }),
 
-  setDraggedNode: (id) => set({ draggedNodeId: id }),
+  setDraggedNode: (id) =>
+    set((s) => {
+      if (id && !s.draggedNodeId) {
+        return {
+          draggedNodeId: id,
+          past: appendCapped(s.past, snapshot(s)),
+          future: [],
+        }
+      }
+      return { draggedNodeId: id }
+    }),
 
   setMergeTarget: (id) => set({ mergeTarget: id }),
   setPendingNodePosition: (position) =>

@@ -10,6 +10,8 @@ export function SidePanel() {
   const dismissNode = useBrainstormStore((s) => s.dismissNode)
   const selectNode = useBrainstormStore((s) => s.selectNode)
   const setSteerPrompt = useBrainstormStore((s) => s.setSteerPrompt)
+  const beginTextEdit = useBrainstormStore((s) => s.beginTextEdit)
+  const commitTextEdit = useBrainstormStore((s) => s.commitTextEdit)
 
   const node = selectedNodeId ? nodes[selectedNodeId] : null
   const visible = !!(
@@ -52,8 +54,17 @@ export function SidePanel() {
           <div className="flex flex-col gap-[12px]">
             <div className="px-[8px]">
               <textarea
+                key={node.id}
                 value={node.text}
+                onFocus={() => beginTextEdit(node.id)}
+                onBlur={commitTextEdit}
                 onChange={(e) => updateNodeText(node.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    ;(e.target as HTMLTextAreaElement).blur()
+                  }
+                }}
                 className="w-full min-h-[110px] max-h-[50vh] p-[12px_14px] text-[13px] font-medium bg-surface-soft rounded-[10px] resize-none outline-none text-ink leading-[1.4] overflow-y-auto [field-sizing:content]"
                 rows={4}
               />

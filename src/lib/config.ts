@@ -10,14 +10,17 @@ export type OpenRouterConfig = {
   systemPrompt?: string
 }
 
+const ENV_API_KEY =
+  (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined) || ''
+
 export function readConfig(): OpenRouterConfig {
   try {
     const raw = localStorage.getItem(CONFIG_KEY)
-    if (!raw) return { apiKey: '' }
+    if (!raw) return { apiKey: ENV_API_KEY }
     const parsed = JSON.parse(raw) as Partial<OpenRouterConfig>
-    return { apiKey: parsed.apiKey || '', ...parsed }
+    return { ...parsed, apiKey: parsed.apiKey || ENV_API_KEY }
   } catch {
-    return { apiKey: '' }
+    return { apiKey: ENV_API_KEY }
   }
 }
 

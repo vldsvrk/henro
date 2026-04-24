@@ -21,21 +21,42 @@ function App() {
   const hasApiKey = useHasApiKey()
   const nodes = useBrainstormStore((s) => s.nodes)
   const deleteSelection = useBrainstormStore((s) => s.deleteSelection)
+  const undo = useBrainstormStore((s) => s.undo)
+  const redo = useBrainstormStore((s) => s.redo)
   const hasSeed = Object.keys(nodes).length > 0
   const activeNodes = Object.values(nodes).filter((n) => n.status === 'active')
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      const tag = target.tagName
+      const isTextField =
+        tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
+
       if (e.key === 'Delete' || (e.key === 'Backspace' && e.metaKey)) {
-        const tag = (e.target as HTMLElement).tagName
-        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        if (isTextField) return
         e.preventDefault()
         deleteSelection()
+        return
+      }
+
+      const mod = e.metaKey || e.ctrlKey
+      if (!mod) return
+      const key = e.key.toLowerCase()
+      if (key === 'z') {
+        if (isTextField) return
+        e.preventDefault()
+        if (e.shiftKey) redo()
+        else undo()
+      } else if (key === 'y') {
+        if (isTextField) return
+        e.preventDefault()
+        redo()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [deleteSelection])
+  }, [deleteSelection, undo, redo])
 
   return (
     <div className="w-screen h-screen bg-canvas text-ink">

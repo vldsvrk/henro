@@ -19,8 +19,9 @@ function getConfig() {
     typeof parsed.systemPrompt === 'string' && parsed.systemPrompt.trim()
       ? parsed.systemPrompt
       : DEFAULT_SYSTEM_PROMPT
+  const envKey = import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined
   return {
-    apiKey: (parsed.apiKey as string) || '',
+    apiKey: (parsed.apiKey as string) || envKey || '',
     model: (parsed.model as string) || 'anthropic/claude-sonnet-4.5',
     branchCount:
       Number.isFinite(branchCountRaw) && branchCountRaw > 0
