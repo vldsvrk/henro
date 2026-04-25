@@ -197,6 +197,22 @@ body,
   animation: shimmer-outline 1.2s ease-in-out infinite;
 }
 
+/* Disable all animations / transitions for users who prefer reduced motion.
+ * Framer Motion is handled separately via <MotionConfig reducedMotion="user">. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Drop expensive backdrop blurs entirely. */
+  .backdrop-blur-sm,
+  .backdrop-blur-\[2px\] {
+    backdrop-filter: none !important;
+  }
+}
+
 .scrollbar-soft {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--color-ink) 18%, transparent)

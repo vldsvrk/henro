@@ -590,9 +590,15 @@ export const useBrainstormStore = create<BrainstormStore>()(
       nodes: { ...s.nodes, [id]: { ...s.nodes[id], text } },
     })),
   setNodeSize: (id, w, h) =>
-    set((s) => ({
-      nodes: { ...s.nodes, [id]: { ...s.nodes[id], size: { w, h } } },
-    })),
+    set((s) => {
+      const cur = s.nodes[id]
+      if (!cur) return s
+      // Skip the write entirely when the size hasn't changed — this fires
+      // a lot during drag (ResizeObserver tics) and every no-op write
+      // wakes every store subscriber.
+      if (cur.size.w === w && cur.size.h === h) return s
+      return { nodes: { ...s.nodes, [id]: { ...cur, size: { w, h } } } }
+    }),
 
   setSeed: (text) => {
     const id = crypto.randomUUID()
@@ -863,7 +869,10 @@ export const useBrainstormStore = create<BrainstormStore>()(
       return { draggedNodeId: id }
     }),
 
-  setMergeTarget: (id) => set({ mergeTarget: id }),
+  setMergeTarget: (id) => {
+    if (get().mergeTarget === id) return
+    set({ mergeTarget: id })
+  },
   setPendingNodePosition: (position) =>
     set({ pendingNodePosition: position }),
 

@@ -55,6 +55,16 @@ export function HenroMenu() {
         <LogoMarkIcon className="w-4 h-4" />
       </button>
 
+      {/* Pre-warm the backdrop-filter compositor layer. The first frame that
+       * applies backdrop-blur otherwise stalls while the GPU allocates a
+       * buffer and compiles the blur shader — visible as a hitch on the
+       * very first modal open. A 1px hidden element keeps the layer alive. */}
+      <div
+        aria-hidden
+        className="fixed top-0 left-0 w-px h-px backdrop-blur-sm pointer-events-none"
+        style={{ opacity: 0 }}
+      />
+
       {createPortal(
         <AnimatePresence>
           {open && (
@@ -81,7 +91,7 @@ export function HenroMenu() {
                   alt="henro"
                   width={122}
                   height={132}
-                  className="w-[122px] h-[132px]"
+                  className="w-[100px]"
                 />
                 <p className="text-body opacity-60 text-center max-w-[159px] leading-[1.4]">
                   Opensource infinite canvas for thinking with AI.

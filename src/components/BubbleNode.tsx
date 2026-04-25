@@ -1,7 +1,6 @@
-import { useRef, useCallback, useState, useEffect, useLayoutEffect } from 'react'
+import { useRef, useCallback, useState, useEffect, useLayoutEffect, memo } from 'react'
 import { motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
-import type { NodeData } from '../store'
 import { CloseIcon } from './icons'
 import { DURATION, TRANSITION } from '../lib/motion'
 
@@ -10,7 +9,10 @@ const DOUBLE_CLICK_MS = 350
 const DRAG_THRESHOLD = 5
 const NODE_WIDTH = 180
 
-export function BubbleNode({ node }: { node: NodeData }) {
+export const BubbleNode = memo(function BubbleNode({ id }: { id: string }) {
+  // Subscribe only to this node's data — the dragged node is the only one
+  // whose ref changes during a drag, so siblings don't re-render.
+  const node = useBrainstormStore((s) => s.nodes[id])
   const expandNode = useBrainstormStore((s) => s.expandNode)
   const steerPrompt = useBrainstormStore((s) => s.steerPrompt)
   const setSteerPrompt = useBrainstormStore((s) => s.setSteerPrompt)
@@ -23,12 +25,10 @@ export function BubbleNode({ node }: { node: NodeData }) {
   const selectNode = useBrainstormStore((s) => s.selectNode)
   const toggleNodeSelected = useBrainstormStore((s) => s.toggleNodeSelected)
   const selectedNodeId = useBrainstormStore((s) => s.selectedNodeId)
-  const selectedNodeIds = useBrainstormStore((s) => s.selectedNodeIds)
+  const isInMultiSelect = useBrainstormStore((s) => s.selectedNodeIds.includes(id))
   const setConnectionDrag = useBrainstormStore((s) => s.setConnectionDrag)
   const addConnection = useBrainstormStore((s) => s.addConnection)
   const connectionDrag = useBrainstormStore((s) => s.connectionDrag)
-  const nodes = useBrainstormStore((s) => s.nodes)
-  const viewport = useBrainstormStore((s) => s.viewport)
   const isLoading = useBrainstormStore((s) => s.isLoading)
   const mergeAnim = useBrainstormStore((s) => s.mergeAnim)
   const setNodeSize = useBrainstormStore((s) => s.setNodeSize)
@@ -36,7 +36,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
   const setPendingNodePosition = useBrainstormStore((s) => s.setPendingNodePosition)
   const setPendingConnectionSource = useBrainstormStore((s) => s.setPendingConnectionSource)
   const seedNodeId = useBrainstormStore((s) => s.seedNodeId)
-  const isSeed = node.id === seedNodeId
+  const isSeed = id === seedNodeId
   const [morphDone, setMorphDone] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setMorphDone(true), 500)
@@ -64,6 +64,34 @@ export function BubbleNode({ node }: { node: NodeData }) {
   const COLLAPSED_MAX = 67.2 // 4 lines × 12px × 1.4 line-height
   const isClamped = fullH > COLLAPSED_MAX + 1
 
+  // Dismiss-button visibility: short close-delay so the cursor can cross
+  // the small gap between bubble and × without dismissing.
+  const [dismissVisible, setDismissVisible] = useState(false)
+  const dismissTimerRef = useRef<number | null>(null)
+  const showDismiss = useCallback(() => {
+    if (dismissTimerRef.current !== null) {
+      window.clearTimeout(dismissTimerRef.current)
+      dismissTimerRef.current = null
+    }
+    setDismissVisible(true)
+  }, [])
+  const queueHideDismiss = useCallback(() => {
+    if (dismissTimerRef.current !== null) {
+      window.clearTimeout(dismissTimerRef.current)
+    }
+    dismissTimerRef.current = window.setTimeout(() => {
+      setDismissVisible(false)
+      dismissTimerRef.current = null
+    }, 80)
+  }, [])
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current !== null) {
+        window.clearTimeout(dismissTimerRef.current)
+      }
+    }
+  }, [])
+
   // Measure the natural (unclamped) text height from an invisible clone
   // so we always have the expand target and a reliable signal for the
   // pill, regardless of what the visible span is doing.
@@ -89,25 +117,33 @@ export function BubbleNode({ node }: { node: NodeData }) {
     return () => clearTimeout(t)
   }, [expanded])
 
+  // Read viewport / nodes lazily inside handlers — subscribing to them would
+  // re-render every BubbleNode on every pan, zoom, or peer move.
   const screenToCanvas = useCallback(
-    (sx: number, sy: number) => ({
-      x: (sx - window.innerWidth / 2 - viewport.x) / viewport.zoom,
-      y: (sy - window.innerHeight / 2 - viewport.y) / viewport.zoom,
-    }),
-    [viewport],
+    (sx: number, sy: number) => {
+      const { viewport } = useBrainstormStore.getState()
+      return {
+        x: (sx - window.innerWidth / 2 - viewport.x) / viewport.zoom,
+        y: (sy - window.innerHeight / 2 - viewport.y) / viewport.zoom,
+      }
+    },
+    [],
   )
 
   const findMergeCandidate = useCallback(
     (pos: { x: number; y: number }) => {
-      return Object.values(nodes).find(
-        (n) =>
-          n.id !== node.id &&
-          n.status === 'active' &&
-          Math.hypot(n.position.x - pos.x, n.position.y - pos.y) <
-            MERGE_DISTANCE,
-      )
+      const allNodes = useBrainstormStore.getState().nodes
+      for (const nid in allNodes) {
+        if (nid === id) continue
+        const n = allNodes[nid]
+        if (n.status !== 'active') continue
+        if (Math.hypot(n.position.x - pos.x, n.position.y - pos.y) < MERGE_DISTANCE) {
+          return n
+        }
+      }
+      return undefined
     },
-    [nodes, node.id],
+    [id],
   )
 
   const handlePointerDown = useCallback(
@@ -120,20 +156,23 @@ export function BubbleNode({ node }: { node: NodeData }) {
       const now = Date.now()
       const timeSinceLastClick = now - lastClickTime.current
 
+      const state = useBrainstormStore.getState()
+      const self = state.nodes[id]
+      if (!self) return
+
       isDragging.current = true
       hasMoved.current = false
       dragStart.current = { x: e.clientX, y: e.clientY }
-      nodeStart.current = { x: node.position.x, y: node.position.y }
+      nodeStart.current = { x: self.position.x, y: self.position.y }
       isShiftClick.current = e.shiftKey
 
-      const state = useBrainstormStore.getState()
       const sel = state.selectedNodeIds
-      if (!e.shiftKey && sel.length > 1 && sel.includes(node.id)) {
+      if (!e.shiftKey && sel.length > 1 && sel.includes(id)) {
         const starts: Record<string, { x: number; y: number }> = {}
-        for (const id of sel) {
-          const n = state.nodes[id]
+        for (const sid of sel) {
+          const n = state.nodes[sid]
           if (n && n.status === 'active') {
-            starts[id] = { x: n.position.x, y: n.position.y }
+            starts[sid] = { x: n.position.x, y: n.position.y }
           }
         }
         groupStarts.current = starts
@@ -148,15 +187,16 @@ export function BubbleNode({ node }: { node: NodeData }) {
       }
       isConnectionDragging.current = false
     },
-    [node.position],
+    [id],
   )
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!isDragging.current) return
 
-      const dx = (e.clientX - dragStart.current.x) / viewport.zoom
-      const dy = (e.clientY - dragStart.current.y) / viewport.zoom
+      const zoom = useBrainstormStore.getState().viewport.zoom
+      const dx = (e.clientX - dragStart.current.x) / zoom
+      const dy = (e.clientY - dragStart.current.y) / zoom
       const moved = Math.abs(dx) + Math.abs(dy) > DRAG_THRESHOLD
 
       if (!moved) return
@@ -167,16 +207,16 @@ export function BubbleNode({ node }: { node: NodeData }) {
       if (isSecondPress.current) {
         isConnectionDragging.current = true
         const canvasPos = screenToCanvas(e.clientX, e.clientY)
-        setConnectionDrag({ sourceId: node.id, point: canvasPos })
+        setConnectionDrag({ sourceId: id, point: canvasPos })
 
         const candidate = findMergeCandidate(canvasPos)
         setMergeTarget(candidate?.id ?? null)
       } else {
-        if (justStarted) setDraggedNode(node.id)
+        if (justStarted) setDraggedNode(id)
         if (groupStarts.current) {
           const updates: Record<string, { x: number; y: number }> = {}
-          for (const [id, start] of Object.entries(groupStarts.current)) {
-            updates[id] = { x: start.x + dx, y: start.y + dy }
+          for (const [sid, start] of Object.entries(groupStarts.current)) {
+            updates[sid] = { x: start.x + dx, y: start.y + dy }
           }
           moveNodes(updates)
           setMergeTarget(null)
@@ -185,14 +225,14 @@ export function BubbleNode({ node }: { node: NodeData }) {
             x: nodeStart.current.x + dx,
             y: nodeStart.current.y + dy,
           }
-          moveNode(node.id, newPos)
+          moveNode(id, newPos)
 
           const candidate = findMergeCandidate(newPos)
           setMergeTarget(candidate?.id ?? null)
         }
       }
     },
-    [viewport, moveNode, moveNodes, node.id, findMergeCandidate, setMergeTarget, setConnectionDrag, screenToCanvas, setDraggedNode],
+    [moveNode, moveNodes, id, findMergeCandidate, setMergeTarget, setConnectionDrag, screenToCanvas, setDraggedNode],
   )
 
   const handlePointerUp = useCallback(() => {
@@ -205,11 +245,11 @@ export function BubbleNode({ node }: { node: NodeData }) {
 
     if (isConnectionDragging.current) {
       if (mergeTarget) {
-        addConnection(node.id, mergeTarget)
+        addConnection(id, mergeTarget)
       } else if (connectionDrag) {
         // Drop on empty space → spawn a new connected node at release point
         setPendingNodePosition(connectionDrag.point)
-        setPendingConnectionSource(node.id)
+        setPendingConnectionSource(id)
       }
       setConnectionDrag(null)
       setMergeTarget(null)
@@ -220,34 +260,34 @@ export function BubbleNode({ node }: { node: NodeData }) {
 
     if (!hasMoved.current) {
       if (isShiftClick.current) {
-        toggleNodeSelected(node.id)
+        toggleNodeSelected(id)
         isShiftClick.current = false
         lastClickTime.current = 0
       } else if (isSecondPress.current) {
-        setSteerPrompt({ nodeId: node.id, defaultValue: 'brainstorm ideas' })
+        setSteerPrompt({ nodeId: id, defaultValue: 'brainstorm ideas' })
         isSecondPress.current = false
         lastClickTime.current = 0
       } else {
-        selectNode(node.id)
+        selectNode(id)
         lastClickTime.current = Date.now()
       }
       return
     }
 
     if (mergeTarget && !groupStarts.current) {
-      mergeNodes(node.id, mergeTarget)
+      mergeNodes(id, mergeTarget)
     }
     setMergeTarget(null)
     isSecondPress.current = false
     groupStarts.current = null
-  }, [setSteerPrompt, selectNode, toggleNodeSelected, mergeNodes, addConnection, mergeTarget, node.id, setMergeTarget, setConnectionDrag, setDraggedNode, connectionDrag, setPendingNodePosition, setPendingConnectionSource])
+  }, [setSteerPrompt, selectNode, toggleNodeSelected, mergeNodes, addConnection, mergeTarget, id, setMergeTarget, setConnectionDrag, setDraggedNode, connectionDrag, setPendingNodePosition, setPendingConnectionSource])
 
   const handleDismiss = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      dismissNode(node.id)
+      dismissNode(id)
     },
-    [dismissNode, node.id],
+    [dismissNode, id],
   )
 
   const handleToggleExpand = useCallback(
@@ -266,29 +306,36 @@ export function BubbleNode({ node }: { node: NodeData }) {
     const observer = new ResizeObserver(() => {
       const w = el.offsetWidth
       const h = el.offsetHeight
-      if (w && h) setNodeSize(node.id, w, h)
+      if (w && h) setNodeSize(id, w, h)
     })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [node.id, setNodeSize])
+  }, [id, setNodeSize])
 
   const draggedNodeId = useBrainstormStore((s) => s.draggedNodeId)
-  const isExpandLoading = isLoading === node.id
-  const isMergeHighlight = mergeTarget === node.id
-  const isSelected = selectedNodeId === node.id || selectedNodeIds.includes(node.id)
+
+  if (!node) return null
+
+  const isExpandLoading = isLoading === id
+  const isMergeHighlight = mergeTarget === id
+  const isSelected = selectedNodeId === id || isInMultiSelect
   const isConnectionTarget =
-    connectionDrag && connectionDrag.sourceId !== node.id && isMergeHighlight
-  const isBeingDragged = draggedNodeId === node.id
+    connectionDrag && connectionDrag.sourceId !== id && isMergeHighlight
+  const isBeingDragged = draggedNodeId === id
 
-  const isMergePlaceholder = mergeAnim?.placeholderId === node.id
+  const isMergePlaceholder = mergeAnim?.placeholderId === id
 
+  // Position via transform (not left/top) so the compositor can move the
+  // bubble without triggering layout/paint on every drag tick.
+  const x = Math.round(node.position.x)
+  const y = Math.round(node.position.y)
   const outerStyle: React.CSSProperties = {
-    left: Math.round(node.position.x),
-    top: Math.round(node.position.y),
-    transform: 'translate(-50%, 0) translateZ(0)',
+    transform: `translate3d(${x}px, ${y}px, 0) translate(-50%, 0)`,
     width: NODE_WIDTH,
-    zIndex: isDragging.current ? 10 : 1,
-    willChange: 'left, top',
+    zIndex: isBeingDragged ? 10 : 1,
+    // Only the dragged bubble gets willChange — applying it everywhere
+    // wastes GPU memory and can hurt perf with many nodes.
+    willChange: isBeingDragged ? 'transform' : undefined,
     ...(isMergePlaceholder ? { pointerEvents: 'none' as const } : {}),
   }
 
@@ -322,12 +369,14 @@ export function BubbleNode({ node }: { node: NodeData }) {
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerEnter={showDismiss}
+      onPointerLeave={queueHideDismiss}
     >
       <motion.div
         ref={elRef}
-        initial={isSeed ? false : { scale: 0, opacity: 0 }}
+        initial={isSeed ? false : { scale: 0.95, opacity: 0 }}
         animate={{ scale: isBeingDragged ? 1.05 : 1, opacity: 1 }}
-        exit={{ scale: 0, opacity: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: DURATION.base }}
         className={`
           relative rounded-bubble px-3.75 py-2.75 cursor-pointer text-ink bg-white
@@ -368,7 +417,9 @@ export function BubbleNode({ node }: { node: NodeData }) {
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDismiss}
-            className="absolute -top-5 -right-5 w-6 h-6 rounded-full bg-white flex items-center justify-center opacity-0 group-hover:opacity-100 text-ink/30 hover:text-ink transition-[opacity,color]"
+            className={`absolute -top-5 -right-5 w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#BCBCBD] hover:text-ink transition-[opacity,color] ${
+              dismissVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
             aria-label="Dismiss"
           >
             <CloseIcon />
@@ -385,22 +436,22 @@ export function BubbleNode({ node }: { node: NodeData }) {
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           <span
-            className={`block h-1 rounded-pill bg-line-neutral group-hover/pill:bg-ink/50 transition-all ${
+            className={`block h-1 rounded-pill bg-line-neutral group-hover/pill:bg-ink/50 transition-[width,background-color] duration-150 ease-out ${
               expanded ? 'w-15' : 'w-7.25'
             }`}
           />
         </button>
       )}
-      {steerPrompt?.nodeId === node.id && (
+      {steerPrompt?.nodeId === id && (
         <SteerInput
           defaultValue={steerPrompt.defaultValue}
-          onSubmit={(value) => expandNode(node.id, value)}
+          onSubmit={(value) => expandNode(id, value)}
           onCancel={() => setSteerPrompt(null)}
         />
       )}
     </div>
   )
-}
+})
 
 function SteerInput({
   defaultValue,

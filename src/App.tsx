@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { AnimatePresence, LayoutGroup } from 'framer-motion'
+import { AnimatePresence, LayoutGroup, MotionConfig } from 'framer-motion'
+import { useShallow } from 'zustand/react/shallow'
 import { useBrainstormStore } from './store'
 import { usePhysics } from './lib/usePhysics'
 import { useHasApiKey } from './lib/config'
@@ -21,12 +22,24 @@ import { HelpButton } from './components/HelpButton'
 function App() {
   usePhysics()
   const hasApiKey = useHasApiKey()
-  const nodes = useBrainstormStore((s) => s.nodes)
+  // Subscribe only to the active node IDs (shallow-equal). When a node moves,
+  // the ID list is unchanged, so App skips re-rendering and BubbleNodes don't
+  // re-mount.
+  const activeNodeIds = useBrainstormStore(
+    useShallow((s) => {
+      const ids: string[] = []
+      for (const id in s.nodes) {
+        if (s.nodes[id].status === 'active') ids.push(id)
+      }
+      return ids
+    }),
+  )
+  // hasSeed mirrors the original semantics: any node ever (active or dismissed)
+  // means the canvas has been seeded — so SeedInput stays hidden after dismiss.
+  const hasSeed = useBrainstormStore((s) => Object.keys(s.nodes).length > 0)
   const deleteSelection = useBrainstormStore((s) => s.deleteSelection)
   const undo = useBrainstormStore((s) => s.undo)
   const redo = useBrainstormStore((s) => s.redo)
-  const hasSeed = Object.keys(nodes).length > 0
-  const activeNodes = Object.values(nodes).filter((n) => n.status === 'active')
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -61,24 +74,33 @@ function App() {
   }, [deleteSelection, undo, redo])
 
   return (
-    <div className="w-screen h-screen bg-canvas text-ink">
-      <LayoutGroup>
+    // reducedMotion="user" honors prefers-reduced-motion for every <motion.*>
+    // child — pairs with the CSS sweep in index.css for non-framer animations.
+    <MotionConfig reducedMotion="user">
+      <div className="w-screen h-screen bg-canvas text-ink">
         {!hasApiKey && <WelcomeScreen />}
         {hasApiKey && (
           <>
-            <AnimatePresence>
-              {!hasSeed && <SeedInput key="seed-input" />}
-            </AnimatePresence>
-            {hasSeed && (
-              <>
+            {/* LayoutGroup only needs to wrap the seed-shell layoutId pair
+             * (SeedInput ↔ seed BubbleNode) so they can animate between
+             * mount/unmount. Wider scope made every motion child sync layout. */}
+            <LayoutGroup>
+              <AnimatePresence>
+                {!hasSeed && <SeedInput key="seed-input" />}
+              </AnimatePresence>
+              {hasSeed && (
                 <Canvas>
                   <Connections />
                   <AnimatePresence>
-                    {activeNodes.map((node) => (
-                      <BubbleNode key={node.id} node={node} />
+                    {activeNodeIds.map((id) => (
+                      <BubbleNode key={id} id={id} />
                     ))}
                   </AnimatePresence>
                 </Canvas>
+              )}
+            </LayoutGroup>
+            {hasSeed && (
+              <>
                 <NodeInput />
                 <ComposeButton />
                 <SidePanel />
@@ -93,9 +115,9 @@ function App() {
             <HelpButton />
           </>
         )}
-      </LayoutGroup>
-      <Toaster />
-    </div>
+        <Toaster />
+      </div>
+    </MotionConfig>
   )
 }
 

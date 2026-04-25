@@ -75,13 +75,13 @@ export function SidePanel() {
               <div className="flex flex-col">
                 {parent && (
                   <p className="px-3.5 py-1.25 text-body leading-[1.5] text-ink break-words">
-                    <BranchIcon className="inline-block w-3 h-3 text-ink/40 mr-1.5 align-[-2px]" />
+                    <BranchIcon className="inline-block w-3 h-3 text-[#A5A6A6] mr-1.5 align-[-2px]" />
                     <span className="text-ink/60">Branched from: </span>
                     <span className="font-medium">{parent.text}</span>
                   </p>
                 )}
                 <p className="px-3.5 py-1.25 text-body leading-[1.5] text-ink break-words">
-                  <PromptIcon className="inline-block w-3 h-3 text-ink/40 mr-1.5 align-[-2px]" />
+                  <PromptIcon className="inline-block w-3 h-3 text-[#A5A6A6] mr-1.5 align-[-2px]" />
                   <span className="text-ink/60">Prompt: </span>
                   <span className="font-medium">
                     {node.steer ?? 'brainstorm ideas'}

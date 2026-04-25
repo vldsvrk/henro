@@ -86,7 +86,7 @@ export function Settings() {
             −
           </button>
           <span className="flex items-center gap-1 px-1 text-body font-medium text-ink min-w-[26px] justify-center">
-            <BranchIcon className="w-3 h-3 text-ink/50" />
+            <BranchIcon className="w-3 h-3 text-[#8F9091]" />
             {branchCount}
           </span>
           <button

@@ -1,3 +1,5 @@
+import { memo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useBrainstormStore } from '../store'
 import type { NodeData } from '../store'
 import { LINE, STROKE } from '../lib/tokens'
@@ -11,27 +13,40 @@ function endpointColor(node: NodeData, isEndpointSelected: boolean) {
   return node.origin === 'ai' ? LINE.ai : LINE.default
 }
 
-function ConnectionLine({
-  a,
-  b,
-  isSelected,
-  selectedNodeIds,
+const ConnectionLine = memo(function ConnectionLine({
+  aId,
+  bId,
 }: {
-  a: NodeData
-  b: NodeData
-  isSelected: boolean
-  selectedNodeIds: Set<string>
+  aId: string
+  bId: string
 }) {
+  // Each line subscribes only to its two endpoints. When an unrelated node
+  // moves, this line skips re-rendering entirely.
+  const a = useBrainstormStore((s) => s.nodes[aId])
+  const b = useBrainstormStore((s) => s.nodes[bId])
   const selectConnection = useBrainstormStore((s) => s.selectConnection)
+  const isSelected = useBrainstormStore((s) =>
+    s.selectedConnectionIds.some(
+      ([x, y]) => (x === aId && y === bId) || (x === bId && y === aId),
+    ),
+  )
+  const isEndpointASelected = useBrainstormStore((s) =>
+    s.selectedNodeIds.includes(aId),
+  )
+  const isEndpointBSelected = useBrainstormStore((s) =>
+    s.selectedNodeIds.includes(bId),
+  )
+
+  if (!a || !b || a.status !== 'active' || b.status !== 'active') return null
 
   const x1 = a.position.x
   const y1 = centerY(a)
   const x2 = b.position.x
   const y2 = centerY(b)
 
-  const gradId = `grad-${a.id}-${b.id}`
-  const aColor = endpointColor(a, selectedNodeIds.has(a.id))
-  const bColor = endpointColor(b, selectedNodeIds.has(b.id))
+  const gradId = `grad-${aId}-${bId}`
+  const aColor = endpointColor(a, isEndpointASelected)
+  const bColor = endpointColor(b, isEndpointBSelected)
   const needsGradient = !isSelected && aColor !== bColor
 
   let strokeColor: string
@@ -75,7 +90,7 @@ function ConnectionLine({
         className="pointer-events-auto cursor-pointer"
         onClick={(e) => {
           e.stopPropagation()
-          selectConnection([a.id, b.id])
+          selectConnection([aId, bId])
         }}
       />
       {/* Visible line */}
@@ -90,92 +105,82 @@ function ConnectionLine({
       />
     </g>
   )
+})
+
+function DragPreview() {
+  const drag = useBrainstormStore((s) => s.connectionDrag)
+  const sourceId = drag?.sourceId
+  const source = useBrainstormStore((s) => (sourceId ? s.nodes[sourceId] : null))
+  if (!drag || !source) return null
+  return (
+    <line
+      x1={source.position.x}
+      y1={centerY(source)}
+      x2={drag.point.x}
+      y2={drag.point.y}
+      stroke={LINE.default}
+      strokeWidth={STROKE.default}
+      strokeDasharray="6 4"
+      className="pointer-events-none"
+    />
+  )
+}
+
+function PendingPreview() {
+  const sourceId = useBrainstormStore((s) => s.pendingConnectionSource)
+  const point = useBrainstormStore((s) => s.pendingNodePosition)
+  const source = useBrainstormStore((s) => (sourceId ? s.nodes[sourceId] : null))
+  if (!source || !point) return null
+  return (
+    <line
+      x1={source.position.x}
+      y1={centerY(source)}
+      x2={point.x}
+      y2={point.y}
+      stroke={LINE.default}
+      strokeWidth={STROKE.default}
+      strokeDasharray="6 4"
+      className="pointer-events-none"
+    />
+  )
 }
 
 export function Connections() {
-  const nodes = useBrainstormStore((s) => s.nodes)
-  const connectionDrag = useBrainstormStore((s) => s.connectionDrag)
-  const connections = useBrainstormStore((s) => s.connections)
-  const selectedConnectionIds = useBrainstormStore((s) => s.selectedConnectionIds)
-  const selectedNodeIds = useBrainstormStore((s) => s.selectedNodeIds)
-  const pendingConnectionSource = useBrainstormStore((s) => s.pendingConnectionSource)
-  const pendingNodePosition = useBrainstormStore((s) => s.pendingNodePosition)
-  const active = Object.values(nodes).filter((n) => n.status === 'active')
-  const selectedSet = new Set(selectedNodeIds)
-
-  const pendingSource = pendingConnectionSource
-    ? nodes[pendingConnectionSource]
-    : null
-
-  const isConnSelected = (a: string, b: string) =>
-    selectedConnectionIds.some(
-      ([x, y]) => (x === a && y === b) || (x === b && y === a),
-    )
+  // Compute the topology as flat "a|b" strings so useShallow's element-wise
+  // comparison can short-circuit when the set of connections is unchanged
+  // (every move otherwise allocates fresh tuples and fails ref-equality).
+  // Position updates are handled by each ConnectionLine's own subscriptions.
+  const pairKeys = useBrainstormStore(
+    useShallow((s) => {
+      const out: string[] = []
+      for (const id in s.nodes) {
+        const n = s.nodes[id]
+        if (n.status !== 'active' || !n.parentId) continue
+        const p = s.nodes[n.parentId]
+        if (!p || p.status !== 'active') continue
+        out.push(`${n.parentId}|${n.id}`)
+      }
+      for (const [a, b] of s.connections) {
+        const na = s.nodes[a]
+        const nb = s.nodes[b]
+        if (!na || !nb || na.status !== 'active' || nb.status !== 'active') continue
+        out.push(`${a}|${b}`)
+      }
+      return out
+    }),
+  )
 
   return (
     <svg
       className="absolute"
       style={{ left: 0, top: 0, width: 1, height: 1, overflow: 'visible' }}
     >
-      {/* Parent-child connections */}
-      {active.map((node) => {
-        if (!node.parentId) return null
-        const parent = nodes[node.parentId]
-        if (!parent || parent.status !== 'active') return null
-
-        return (
-          <ConnectionLine
-            key={`${parent.id}-${node.id}`}
-            a={parent}
-            b={node}
-            isSelected={isConnSelected(parent.id, node.id)}
-            selectedNodeIds={selectedSet}
-          />
-        )
+      {pairKeys.map((key) => {
+        const [a, b] = key.split('|')
+        return <ConnectionLine key={key} aId={a} bId={b} />
       })}
-      {/* User-created connections */}
-      {connections.map(([id1, id2]) => {
-        const n1 = nodes[id1]
-        const n2 = nodes[id2]
-        if (!n1 || !n2 || n1.status !== 'active' || n2.status !== 'active')
-          return null
-
-        return (
-          <ConnectionLine
-            key={`conn-${id1}-${id2}`}
-            a={n1}
-            b={n2}
-            isSelected={isConnSelected(id1, id2)}
-            selectedNodeIds={selectedSet}
-          />
-        )
-      })}
-      {/* Drag preview */}
-      {connectionDrag && nodes[connectionDrag.sourceId] && (
-        <line
-          x1={nodes[connectionDrag.sourceId].position.x}
-          y1={centerY(nodes[connectionDrag.sourceId])}
-          x2={connectionDrag.point.x}
-          y2={connectionDrag.point.y}
-          stroke={LINE.default}
-          strokeWidth={STROKE.default}
-          strokeDasharray="6 4"
-          className="pointer-events-none"
-        />
-      )}
-      {/* Pending connection while typing the new node's text */}
-      {pendingSource && pendingNodePosition && (
-        <line
-          x1={pendingSource.position.x}
-          y1={centerY(pendingSource)}
-          x2={pendingNodePosition.x}
-          y2={pendingNodePosition.y}
-          stroke={LINE.default}
-          strokeWidth={STROKE.default}
-          strokeDasharray="6 4"
-          className="pointer-events-none"
-        />
-      )}
+      <DragPreview />
+      <PendingPreview />
     </svg>
   )
 }
