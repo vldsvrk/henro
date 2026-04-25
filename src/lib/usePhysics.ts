@@ -29,19 +29,34 @@ export function usePhysics() {
   }, [])
 
   const settle = useCallback(() => {
+    // Refresh the budget on every trigger so an in-flight settle gets extended
+    // when a new size change comes in (e.g. expand mid-physics).
+    framesLeft.current = 20
     if (running.current) return
     running.current = true
-    framesLeft.current = 20
     rafId.current = requestAnimationFrame(loop)
   }, [loop])
 
-  // Trigger settling when drag ends
+  // Trigger settling on drag-end and on any node size change (expand/collapse,
+  // AI stream growth, new node growing in from {0,0} to its rendered size).
   useEffect(() => {
-    let prev: string | null = null
+    let prevDragged: string | null = null
+    const prevHeights = new Map<string, number>()
+
     const unsub = useBrainstormStore.subscribe((state) => {
       const cur = state.draggedNodeId
-      if (!cur && prev) settle()
-      prev = cur
+      if (!cur && prevDragged) settle()
+      prevDragged = cur
+
+      let sizeChanged = false
+      for (const node of Object.values(state.nodes)) {
+        const prevH = prevHeights.get(node.id)
+        if (prevH !== undefined && Math.abs(node.size.h - prevH) > 0.5) {
+          sizeChanged = true
+        }
+        prevHeights.set(node.id, node.size.h)
+      }
+      if (sizeChanged) settle()
     })
     return () => {
       unsub()

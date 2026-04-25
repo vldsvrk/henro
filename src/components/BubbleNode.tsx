@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
 import type { NodeData } from '../store'
 import { CloseIcon } from './icons'
+import { DURATION, TRANSITION } from '../lib/motion'
 
 const MERGE_DISTANCE = 60
 const DOUBLE_CLICK_MS = 350
@@ -298,14 +299,14 @@ export function BubbleNode({ node }: { node: NodeData }) {
       <div className="absolute select-none" style={outerStyle}>
         <motion.div
           layoutId="seed-shell"
-          className="bg-white rounded-[15px] px-[15px] py-[11px]"
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="bg-white rounded-bubble px-3.75 py-2.75"
+          transition={TRANSITION.morph}
         >
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.2, delay: 0.2 }}
-            className="text-[12px] leading-[1.4] break-words block"
+            transition={{ duration: DURATION.medium, delay: DURATION.medium }}
+            className="text-body leading-[1.4] break-words block"
           >
             {node.text}
           </motion.span>
@@ -327,29 +328,29 @@ export function BubbleNode({ node }: { node: NodeData }) {
         initial={isSeed ? false : { scale: 0, opacity: 0 }}
         animate={{ scale: isBeingDragged ? 1.05 : 1, opacity: 1 }}
         exit={{ scale: 0, opacity: 0 }}
-        transition={{ duration: 0.18 }}
+        transition={{ duration: DURATION.base }}
         className={`
-          relative rounded-[15px] px-[15px] py-[11px] cursor-pointer text-ink bg-white
-          ${isBeingDragged ? 'shadow-[0_6px_18px_rgba(0,0,0,0.08)]' : ''}
+          relative rounded-bubble px-3.75 py-2.75 cursor-pointer text-ink bg-white
+          ${isBeingDragged ? 'shadow-bubble-drag' : ''}
           ${
             isConnectionTarget || isMergeHighlight || isSelected
               ? 'outline outline-[1.5px] outline-select'
               : node.origin === 'ai'
-                ? 'outline outline-[1px] outline-ai'
+                ? 'outline outline-1 outline-ai'
                 : ''
           }
           ${isExpandLoading || isMergePlaceholder ? 'shimmer-outline' : ''}
         `}
       >
         <div
-          className="overflow-hidden transition-[max-height] duration-[220ms] ease-out"
+          className="overflow-hidden transition-[max-height] duration-200 ease-out"
           style={{
             maxHeight: expanded ? fullH || 1000 : COLLAPSED_MAX,
           }}
         >
           <span
             ref={textRef}
-            className={`text-[12px] leading-[1.4] break-words ${
+            className={`text-body leading-[1.4] break-words ${
               applyClamp ? 'line-clamp-4' : 'block'
             } ${isMergePlaceholder && !node.text ? 'text-ink/50 italic' : ''}`}
           >
@@ -359,7 +360,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
         <span
           ref={measureRef}
           aria-hidden
-          className="absolute left-[15px] right-[15px] top-[11px] invisible pointer-events-none text-[12px] leading-[1.4] break-words block"
+          className="absolute left-3.75 right-3.75 top-2.75 invisible pointer-events-none text-body leading-[1.4] break-words block"
         >
           {node.text}
         </span>
@@ -367,7 +368,7 @@ export function BubbleNode({ node }: { node: NodeData }) {
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDismiss}
-            className="absolute -top-5 -right-5 w-[25px] h-[25px] rounded-full bg-white flex items-center justify-center opacity-0 group-hover:opacity-100 text-ink/30 hover:text-ink transition-[opacity,color]"
+            className="absolute -top-5 -right-5 w-6 h-6 rounded-full bg-white flex items-center justify-center opacity-0 group-hover:opacity-100 text-ink/30 hover:text-ink transition-[opacity,color]"
             aria-label="Dismiss"
           >
             <CloseIcon />
@@ -378,14 +379,14 @@ export function BubbleNode({ node }: { node: NodeData }) {
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={handleToggleExpand}
-          className={`group/pill absolute left-1/2 -translate-x-1/2 top-full flex items-center justify-center px-4 py-[8px] transition-opacity ${
+          className={`group/pill absolute left-1/2 -translate-x-1/2 top-full flex items-center justify-center px-4 py-2 transition-opacity ${
             expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           <span
-            className={`block h-[4px] rounded-[7px] bg-line-neutral group-hover/pill:bg-ink/50 transition-all ${
-              expanded ? 'w-[60px]' : 'w-[29px]'
+            className={`block h-1 rounded-pill bg-line-neutral group-hover/pill:bg-ink/50 transition-all ${
+              expanded ? 'w-15' : 'w-7.25'
             }`}
           />
         </button>
@@ -429,7 +430,7 @@ function SteerInput({
       }}
       onBlur={onCancel}
       placeholder="branch on..."
-      className="mt-[10px] w-full px-3 py-2 text-[12px] rounded-[10px] outline-none bg-white text-ink placeholder:text-ink/40"
+      className="mt-2.5 w-full px-3 py-2 text-body rounded-control outline-none bg-white text-ink placeholder:text-ink/40"
     />
   )
 }

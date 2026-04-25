@@ -34,7 +34,7 @@ function App() {
       const isTextField =
         tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
 
-      if (e.key === 'Delete' || (e.key === 'Backspace' && e.metaKey)) {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
         if (isTextField) return
         e.preventDefault()
         deleteSelection()

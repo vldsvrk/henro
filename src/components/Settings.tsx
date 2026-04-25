@@ -64,33 +64,33 @@ export function Settings() {
     <div className="fixed top-4 right-4 z-40 flex flex-col gap-2 items-end">
       <div className="flex items-center gap-2">
         <div
-          className="flex items-center h-[28px] bg-white rounded-[10px] px-[4px]"
+          className="flex items-center h-7 bg-white rounded-control px-1"
           title="Branches per expansion"
         >
           <button
             onClick={() => adjustBranch(-1)}
             disabled={branchCount <= 1}
             aria-label="Decrease branches"
-            className="w-[22px] h-[22px] flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 transition-colors text-[14px] leading-none"
+            className="w-5.5 h-5.5 flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 transition-colors text-button leading-none"
           >
             −
           </button>
-          <span className="flex items-center gap-[4px] px-[4px] text-[12px] font-medium text-ink min-w-[26px] justify-center">
-            <BranchIcon className="w-[11px] h-[11px] text-ink/50" />
+          <span className="flex items-center gap-1 px-1 text-body font-medium text-ink min-w-[26px] justify-center">
+            <BranchIcon className="w-3 h-3 text-ink/50" />
             {branchCount}
           </span>
           <button
             onClick={() => adjustBranch(1)}
             disabled={branchCount >= 10}
             aria-label="Increase branches"
-            className="w-[22px] h-[22px] flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 transition-colors text-[14px] leading-none"
+            className="w-5.5 h-5.5 flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 transition-colors text-button leading-none"
           >
             +
           </button>
         </div>
         <button
           onClick={() => setShowAI(!showAI)}
-          className={`h-[28px] px-[14px] text-[12px] font-medium rounded-[10px] transition-colors ${
+          className={`h-7 px-3.5 text-body font-medium rounded-control transition-colors ${
             showAI
               ? 'bg-ink text-white'
               : 'bg-white text-ink hover:bg-chip'
@@ -101,14 +101,14 @@ export function Settings() {
       </div>
 
       {showAI && (
-        <div className="bg-white rounded-[13px] p-[14px] w-[320px] flex flex-col gap-[10px] max-h-[80vh] overflow-y-auto">
+        <div className="bg-white rounded-card p-3.5 w-[320px] flex flex-col gap-2.5 max-h-[80vh] overflow-y-auto">
           <div className="flex items-center justify-between">
-            <label className="text-[12px] text-ink/60">OpenRouter API Key</label>
+            <label className="text-body text-ink/60">OpenRouter API Key</label>
             <a
               href="https://openrouter.ai/keys"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] text-ink/50 hover:text-ink underline underline-offset-2"
+              className="text-caption text-ink/50 hover:text-ink underline underline-offset-2"
             >
               Get a key →
             </a>
@@ -118,25 +118,25 @@ export function Settings() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-or-..."
-            className="text-[13px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-full outline-none text-ink placeholder:text-ink/40"
+            className="text-ui bg-surface-soft rounded-lg px-3 py-2 w-full outline-none text-ink placeholder:text-ink/40"
           />
 
-          <label className="text-[12px] text-ink/60">Model</label>
+          <label className="text-body text-ink/60">Model</label>
           <input
             type="text"
             value={model}
             onChange={(e) => setModel(e.target.value)}
             placeholder="anthropic/claude-sonnet-4.5"
-            className="text-[13px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-full outline-none text-ink placeholder:text-ink/40"
+            className="text-ui bg-surface-soft rounded-lg px-3 py-2 w-full outline-none text-ink placeholder:text-ink/40"
           />
 
-          <label className="text-[12px] text-ink/60 mt-[4px]">System prompt</label>
-          <div className="flex gap-[6px] flex-wrap">
+          <label className="text-body text-ink/60 mt-1">System prompt</label>
+          <div className="flex gap-1.5 flex-wrap">
             {(Object.keys(SYSTEM_PROMPT_PRESETS) as PresetKey[]).map((key) => (
               <button
                 key={key}
                 onClick={() => loadPreset(key)}
-                className="text-[12px] px-[10px] py-[5px] bg-chip rounded-[8px] text-ink hover:bg-[#eee] transition-colors"
+                className="text-body px-2.5 py-1.25 bg-chip rounded-lg text-ink hover:bg-chip-hover transition-colors"
               >
                 {PRESET_LABELS[key]}
               </button>
@@ -146,12 +146,12 @@ export function Settings() {
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             rows={8}
-            className="text-[12px] bg-surface-soft rounded-[8px] px-[12px] py-[8px] w-full outline-none resize-none text-ink leading-[1.5]"
+            className="text-body bg-surface-soft rounded-lg px-3 py-2 w-full outline-none resize-none text-ink leading-[1.5]"
           />
 
           <button
             onClick={saveConfig}
-            className="text-[13px] font-medium bg-ink text-white rounded-[8px] px-[16px] py-[8px] self-end hover:opacity-90 mt-[4px] transition-opacity"
+            className="text-ui font-medium bg-ink text-white rounded-lg px-4 py-2 self-end hover:opacity-90 mt-1 transition-opacity"
           >
             Save
           </button>

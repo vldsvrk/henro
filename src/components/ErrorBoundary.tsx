@@ -19,14 +19,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="w-screen h-screen bg-canvas text-ink flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-[13px] border border-line-neutral/60 p-[24px] flex flex-col gap-[12px]">
-          <h1 className="text-[18px] font-semibold">Something went wrong</h1>
-          <p className="text-[14px] text-ink/70">
+        <div className="max-w-md w-full bg-white rounded-card border border-line-neutral/60 p-6 flex flex-col gap-3">
+          <h1 className="text-heading font-semibold">Something went wrong</h1>
+          <p className="text-button text-ink/70">
             {this.state.error.message || 'An unexpected error occurred.'}
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="self-start px-[14px] py-[7px] rounded-[8px] bg-ink hover:opacity-90 text-[13px] font-medium text-white transition-opacity"
+            className="self-start px-3.5 py-1.75 rounded-lg bg-ink hover:opacity-90 text-ui font-medium text-white transition-opacity"
           >
             Reload
           </button>

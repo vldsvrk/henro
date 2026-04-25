@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
 import { BranchIcon, PromptIcon } from './icons'
+import { TRANSITION } from '../lib/motion'
 
 export function SidePanel() {
   const selectedNodeId = useBrainstormStore((s) => s.selectedNodeId)
@@ -35,15 +36,15 @@ export function SidePanel() {
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 24 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
+          transition={TRANSITION.base}
           className="fixed top-0 right-0 h-screen w-[320px] p-3 z-30 flex items-stretch pointer-events-none"
         >
-      <div className="flex-1 bg-white rounded-[12px] flex flex-col p-[8px] gap-[8px] overflow-hidden pointer-events-auto">
-        <div className="flex items-center justify-between px-[14px] py-[10px]">
-          <span className="text-[12px] text-ink/60">
+      <div className="flex-1 bg-white rounded-xl flex flex-col p-2 gap-2 overflow-hidden pointer-events-auto">
+        <div className="flex items-center justify-between px-3.5 py-2.5">
+          <span className="text-body text-ink/60">
             {isAI ? 'AI Response' : 'Your Thought'}
           </span>
-          <div className="flex items-center gap-[8px] text-[11px] text-ink/60">
+          <div className="flex items-center gap-2 text-caption text-ink/60">
             <span>Depth: {node.depth}</span>
             <span className="w-[3px] h-[3px] rounded-full bg-ink/40" />
             <span>Children: {activeChildCount}</span>
@@ -51,8 +52,8 @@ export function SidePanel() {
         </div>
 
         <div className="flex-1 flex flex-col justify-between min-h-0">
-          <div className="flex flex-col gap-[12px]">
-            <div className="px-[8px]">
+          <div className="flex flex-col gap-3">
+            <div className="px-2">
               <textarea
                 key={node.id}
                 value={node.text}
@@ -65,7 +66,7 @@ export function SidePanel() {
                     ;(e.target as HTMLTextAreaElement).blur()
                   }
                 }}
-                className="w-full min-h-[110px] max-h-[50vh] p-[12px_14px] text-[13px] font-medium bg-surface-soft rounded-[10px] resize-none outline-none text-ink leading-[1.4] overflow-y-auto [field-sizing:content]"
+                className="w-full min-h-[110px] max-h-[50vh] py-3 px-3.5 text-ui font-medium bg-surface-soft rounded-control resize-none outline-none text-ink leading-[1.4] overflow-y-auto [field-sizing:content]"
                 rows={4}
               />
             </div>
@@ -73,14 +74,14 @@ export function SidePanel() {
             {isAI && (
               <div className="flex flex-col">
                 {parent && (
-                  <p className="px-[14px] py-[5px] text-[12px] leading-[1.5] text-ink break-words">
-                    <BranchIcon className="inline-block w-[12px] h-[12px] text-ink/40 mr-[6px] align-[-2px]" />
+                  <p className="px-3.5 py-1.25 text-body leading-[1.5] text-ink break-words">
+                    <BranchIcon className="inline-block w-3 h-3 text-ink/40 mr-1.5 align-[-2px]" />
                     <span className="text-ink/60">Branched from: </span>
                     <span className="font-medium">{parent.text}</span>
                   </p>
                 )}
-                <p className="px-[14px] py-[5px] text-[12px] leading-[1.5] text-ink break-words">
-                  <PromptIcon className="inline-block w-[12px] h-[12px] text-ink/40 mr-[6px] align-[-2px]" />
+                <p className="px-3.5 py-1.25 text-body leading-[1.5] text-ink break-words">
+                  <PromptIcon className="inline-block w-3 h-3 text-ink/40 mr-1.5 align-[-2px]" />
                   <span className="text-ink/60">Prompt: </span>
                   <span className="font-medium">
                     {node.steer ?? 'brainstorm ideas'}
@@ -95,7 +96,7 @@ export function SidePanel() {
                         defaultValue: node.steer ?? 'brainstorm ideas',
                       })
                     }}
-                    className="self-start ml-[14px] mt-[6px] text-[11px] text-ink/60 hover:text-ink underline underline-offset-2"
+                    className="self-start ml-3.5 mt-1.5 text-caption text-ink/60 hover:text-ink underline underline-offset-2"
                   >
                     Re-branch with different lens
                   </button>
@@ -104,7 +105,7 @@ export function SidePanel() {
             )}
           </div>
 
-          <div className="flex gap-[8px] pt-[8px]">
+          <div className="flex gap-2 pt-2">
             <button
               onClick={() => {
                 if (hasActiveChildren) {
@@ -116,7 +117,7 @@ export function SidePanel() {
                   })
                 }
               }}
-              className="flex-1 px-[14px] py-[7px] text-[13px] font-medium bg-chip rounded-[8px] text-ink hover:bg-[#eee] transition-colors"
+              className="flex-1 px-3.5 py-1.75 text-ui font-medium bg-chip rounded-lg text-ink hover:bg-chip-hover transition-colors"
             >
               Expand
             </button>
@@ -125,7 +126,7 @@ export function SidePanel() {
                 dismissNode(node.id)
                 selectNode(null)
               }}
-              className="flex-1 px-[14px] py-[7px] text-[13px] font-medium bg-danger-soft rounded-[8px] text-danger hover:brightness-95 transition-colors"
+              className="flex-1 px-3.5 py-1.75 text-ui font-medium bg-danger-soft rounded-lg text-danger hover:brightness-95 transition-colors"
             >
               Delete
             </button>

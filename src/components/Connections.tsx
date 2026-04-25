@@ -1,20 +1,14 @@
 import { useBrainstormStore } from '../store'
 import type { NodeData } from '../store'
-
-const LINE_SELECT = '#8FD9ED'
-const LINE_AI = '#FDA5D5'
-const LINE_DEFAULT = '#D5D5D5'
-// Perceptual bridge for the teal↔pink gradient — RGB interpolation between
-// those two passes through gray; a lavender midpoint keeps the transition warm.
-const BLEND_SELECT_AI = '#C8ABDD'
+import { LINE, STROKE } from '../lib/tokens'
 
 function centerY(node: NodeData) {
   return node.position.y + (node.size.h || 60) / 2
 }
 
 function endpointColor(node: NodeData, isEndpointSelected: boolean) {
-  if (isEndpointSelected) return LINE_SELECT
-  return node.origin === 'ai' ? LINE_AI : LINE_DEFAULT
+  if (isEndpointSelected) return LINE.select
+  return node.origin === 'ai' ? LINE.ai : LINE.default
 }
 
 function ConnectionLine({
@@ -42,7 +36,7 @@ function ConnectionLine({
 
   let strokeColor: string
   if (isSelected) {
-    strokeColor = LINE_SELECT
+    strokeColor = LINE.select
   } else if (needsGradient) {
     strokeColor = `url(#${gradId})`
   } else {
@@ -62,9 +56,9 @@ function ConnectionLine({
             y2={y2}
           >
             <stop offset="20%" stopColor={aColor} />
-            {((aColor === LINE_SELECT && bColor === LINE_AI) ||
-              (aColor === LINE_AI && bColor === LINE_SELECT)) && (
-              <stop offset="55%" stopColor={BLEND_SELECT_AI} />
+            {((aColor === LINE.select && bColor === LINE.ai) ||
+              (aColor === LINE.ai && bColor === LINE.select)) && (
+              <stop offset="55%" stopColor={LINE.blend} />
             )}
             <stop offset="90%" stopColor={bColor} />
           </linearGradient>
@@ -77,7 +71,7 @@ function ConnectionLine({
         x2={x2}
         y2={y2}
         stroke="transparent"
-        strokeWidth={12}
+        strokeWidth={STROKE.hit}
         className="pointer-events-auto cursor-pointer"
         onClick={(e) => {
           e.stopPropagation()
@@ -91,7 +85,7 @@ function ConnectionLine({
         x2={x2}
         y2={y2}
         stroke={strokeColor}
-        strokeWidth={isSelected ? 2 : 1.5}
+        strokeWidth={isSelected ? STROKE.selected : STROKE.default}
         className="pointer-events-none"
       />
     </g>
@@ -163,8 +157,8 @@ export function Connections() {
           y1={centerY(nodes[connectionDrag.sourceId])}
           x2={connectionDrag.point.x}
           y2={connectionDrag.point.y}
-          stroke={LINE_DEFAULT}
-          strokeWidth={1.5}
+          stroke={LINE.default}
+          strokeWidth={STROKE.default}
           strokeDasharray="6 4"
           className="pointer-events-none"
         />
@@ -176,8 +170,8 @@ export function Connections() {
           y1={centerY(pendingSource)}
           x2={pendingNodePosition.x}
           y2={pendingNodePosition.y}
-          stroke={LINE_DEFAULT}
-          strokeWidth={1.5}
+          stroke={LINE.default}
+          strokeWidth={STROKE.default}
           strokeDasharray="6 4"
           className="pointer-events-none"
         />

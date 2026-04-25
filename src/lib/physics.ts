@@ -29,11 +29,16 @@ export function resolveOverlaps(
     for (let j = i + 1; j < n; j++) {
       const a = nodes[i]
       const b = nodes[j]
+      const aH = a.size.h || DEFAULT_H
+      const bH = b.size.h || DEFAULT_H
+
+      // Bubbles render center-X (translate -50%) but top-Y. Convert tops to
+      // centers so AABB half-extents work for both axes.
       const dx = a.position.x - b.position.x
-      const dy = a.position.y - b.position.y
+      const dy = a.position.y + aH / 2 - (b.position.y + bH / 2)
 
       const hx = ((a.size.w || DEFAULT_W) + (b.size.w || DEFAULT_W)) / 2 + OVERLAP_PAD
-      const hy = ((a.size.h || DEFAULT_H) + (b.size.h || DEFAULT_H)) / 2 + OVERLAP_PAD
+      const hy = (aH + bH) / 2 + OVERLAP_PAD
       const ax = Math.abs(dx)
       const ay = Math.abs(dy)
 

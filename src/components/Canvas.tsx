@@ -192,7 +192,7 @@ export function Canvas({ children }: { children: ReactNode }) {
       {/* Selection rectangle */}
       {selectionBox && (selectionBox.w > 2 || selectionBox.h > 2) && (
         <div
-          className="fixed border border-select bg-select/15 pointer-events-none rounded-[4px]"
+          className="fixed border border-select bg-select/15 pointer-events-none rounded-sm"
           style={{
             left: selectionBox.x,
             top: selectionBox.y,

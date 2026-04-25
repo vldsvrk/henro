@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
+import { TRANSITION } from '../lib/motion'
 
 export function SeedInput() {
   const [text, setText] = useState('')
@@ -21,7 +22,7 @@ export function SeedInput() {
       <motion.div
         layoutId="seed-shell"
         className="bg-white rounded-full px-6 py-4 w-[28rem] max-w-[80vw]"
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        transition={TRANSITION.morph}
       >
         <motion.input
           exit={{ opacity: 0 }}

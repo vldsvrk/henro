@@ -68,7 +68,7 @@ export function ProjectSwitcher() {
           setConfirmDelete(false)
           setRenaming(false)
         }}
-        className={`px-[14px] py-[6px] text-[12px] font-medium rounded-[10px] max-w-[240px] truncate transition-colors ${
+        className={`px-3.5 py-1.5 text-body font-medium rounded-control max-w-[240px] truncate transition-colors ${
           open
             ? 'bg-ink text-white'
             : 'bg-white text-ink hover:bg-chip'
@@ -78,9 +78,9 @@ export function ProjectSwitcher() {
       </button>
 
       {open && (
-        <div className="bg-white rounded-[13px] p-[10px] w-[260px] flex flex-col gap-[6px] max-h-[70vh] overflow-y-auto">
-          <div className="px-[4px] py-[2px]">
-            <label className="text-[11px] text-ink/50 uppercase tracking-wider">
+        <div className="bg-white rounded-card p-2.5 w-[260px] flex flex-col gap-1.5 max-h-[70vh] overflow-y-auto">
+          <div className="px-1 py-0.5">
+            <label className="text-caption text-ink/50 uppercase tracking-wider">
               Current
             </label>
             {renaming ? (
@@ -93,12 +93,12 @@ export function ProjectSwitcher() {
                   if (e.key === 'Enter') commitRename()
                   if (e.key === 'Escape') setRenaming(false)
                 }}
-                className="mt-[2px] text-[13px] bg-surface-soft rounded-[6px] px-[8px] py-[5px] w-full outline-none text-ink"
+                className="mt-0.5 text-ui bg-surface-soft rounded-md px-2 py-1.25 w-full outline-none text-ink"
               />
             ) : (
               <button
                 onClick={startRename}
-                className="mt-[2px] text-[13px] text-ink w-full text-left hover:underline underline-offset-2"
+                className="mt-0.5 text-ui text-ink w-full text-left hover:underline underline-offset-2"
                 title="Click to rename"
               >
                 {current?.name ?? 'Untitled'}
@@ -108,11 +108,11 @@ export function ProjectSwitcher() {
 
           {others.length > 0 && (
             <>
-              <div className="h-px bg-line-neutral/60 my-[2px]" />
-              <label className="text-[11px] text-ink/50 uppercase tracking-wider px-[4px]">
+              <div className="h-px bg-line-neutral/60 my-0.5" />
+              <label className="text-caption text-ink/50 uppercase tracking-wider px-1">
                 Other projects
               </label>
-              <div className="flex flex-col gap-[2px]">
+              <div className="flex flex-col gap-0.5">
                 {others.map((p) => (
                   <button
                     key={p.id}
@@ -120,7 +120,7 @@ export function ProjectSwitcher() {
                       switchProject(p.id)
                       setOpen(false)
                     }}
-                    className="text-[13px] text-ink text-left px-[8px] py-[6px] rounded-[6px] hover:bg-chip transition-colors truncate"
+                    className="text-ui text-ink text-left px-2 py-1.5 rounded-md hover:bg-chip transition-colors truncate"
                   >
                     {p.name}
                   </button>
@@ -129,21 +129,21 @@ export function ProjectSwitcher() {
             </>
           )}
 
-          <div className="h-px bg-line-neutral/60 my-[2px]" />
+          <div className="h-px bg-line-neutral/60 my-0.5" />
 
           <button
             onClick={() => {
               newProject()
               setOpen(false)
             }}
-            className="text-[13px] text-ink text-left px-[8px] py-[6px] rounded-[6px] hover:bg-chip transition-colors"
+            className="text-ui text-ink text-left px-2 py-1.5 rounded-md hover:bg-chip transition-colors"
           >
             + New project
           </button>
 
           <button
             onClick={handleDelete}
-            className={`text-[13px] text-left px-[8px] py-[6px] rounded-[6px] transition-colors ${
+            className={`text-ui text-left px-2 py-1.5 rounded-md transition-colors ${
               confirmDelete
                 ? 'bg-danger-soft text-danger'
                 : 'text-ink/70 hover:bg-chip'

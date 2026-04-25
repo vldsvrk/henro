@@ -2,6 +2,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* === Colors === */
   --color-ink: #1F2122;
   --color-ai: #FDA5D5;
   --color-ai-soft: #FDE5F0;
@@ -9,12 +10,48 @@
   --color-select-soft: #E3F6FA;
   --color-canvas: #F0F0EF;
   --color-line-neutral: #D5D5D5;
+  --color-line-blend: #C8ABDD;
   --color-surface-soft: #F7F7F7;
   --color-chip: #F5F5F5;
+  --color-chip-hover: #EBEBEB;
   --color-danger-soft: #FDEBE9;
   --color-danger: #CA372C;
+
+  /* === Typography === */
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Semantic font sizes (rem so they scale with user preferences) */
+  --text-caption: 0.6875rem;     /* 11px — labels, key caps, depth/children */
+  --text-body: 0.75rem;          /* 12px — node text, default body */
+  --text-ui: 0.8125rem;          /* 13px — panel body, inputs, list items */
+  --text-button: 0.875rem;       /* 14px — buttons, modal header */
+  --text-prose: 0.9375rem;       /* 15px — modal markdown body */
+  --text-heading: 1.125rem;      /* 18px — h2, error heading */
+  --text-display: 1.25rem;       /* 20px — h1, welcome heading */
+
+  /* === Border radius (semantic, in addition to Tailwind defaults) === */
+  --radius-pill: 0.4375rem;      /* 7px — expand/collapse pill bar */
+  --radius-control: 0.625rem;    /* 10px — inputs, button groups */
+  --radius-card: 0.8125rem;      /* 13px — cards, modals, panels */
+  --radius-bubble: 0.9375rem;    /* 15px — node bubbles (product identity) */
+
+  /* === Shadows === */
+  --shadow-bubble-drag: 0 6px 18px rgb(0 0 0 / 0.08);
+  --shadow-toast: 0 4px 16px rgb(0 0 0 / 0.08);
+
+  /* === Motion === */
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/*
+ * Z-index layering policy (use Tailwind defaults only):
+ *   z-1     — bubble at rest
+ *   z-10    — bubble while dragging
+ *   z-30    — side panel
+ *   z-40    — fixed controls (settings, project switcher, help, fab, selection count)
+ *   z-50    — modals, node input
+ *   z-60    — toasts (always on top)
+ */
 
 html,
 body,
