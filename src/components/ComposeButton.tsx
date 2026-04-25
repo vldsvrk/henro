@@ -23,7 +23,7 @@ export function ComposeButton() {
       setHiddenByPanel(true)
       return
     }
-    const t = setTimeout(() => setHiddenByPanel(false), 200)
+    const t = setTimeout(() => setHiddenByPanel(false), 140)
     return () => clearTimeout(t)
   }, [hasSelection])
 
@@ -80,15 +80,22 @@ export function ComposeButton() {
 
   return (
     <>
-      {showFab && (
-        <button
-          onClick={composeResult ? openCompose : compose}
-          disabled={composing}
-          className="fixed bottom-6 right-6 z-40 px-4 py-2 rounded-lg bg-ink hover:opacity-90 text-button font-medium text-white disabled:opacity-50 transition-opacity"
-        >
-          {composing ? 'Composing...' : composeResult ? 'View Summary' : 'Compose'}
-        </button>
-      )}
+      <AnimatePresence>
+        {showFab && (
+          <motion.button
+            key="compose-fab"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={TRANSITION.snappy}
+            onClick={composeResult ? openCompose : compose}
+            disabled={composing}
+            className="fixed bottom-6 right-6 z-40 px-4 py-2 rounded-lg bg-ink hover:opacity-90 text-button font-medium text-white disabled:opacity-50 transition-opacity"
+          >
+            {composing ? 'Composing...' : composeResult ? 'View Summary' : 'Compose'}
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {composeOpen && composeResult && (

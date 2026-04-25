@@ -89,10 +89,10 @@ export function HelpButton() {
         {open && (
           <motion.div
             key="help-panel"
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={TRANSITION.base}
+            exit={{ opacity: 0, y: 6 }}
+            transition={TRANSITION.snappy}
             className="bg-white rounded-card p-3.5 w-[340px] max-h-[70vh] overflow-y-auto flex flex-col gap-3.5"
           >
             <div className="flex items-center justify-between">

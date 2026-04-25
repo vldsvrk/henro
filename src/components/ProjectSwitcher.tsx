@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
+import { TRANSITION } from '../lib/motion'
 
 export function ProjectSwitcher() {
   const [open, setOpen] = useState(false)
@@ -60,7 +62,7 @@ export function ProjectSwitcher() {
   return (
     <div
       ref={rootRef}
-      className="fixed top-4 left-4 z-40 flex flex-col gap-2 items-start"
+      className="flex flex-col gap-2 items-start"
     >
       <button
         onClick={() => {
@@ -77,8 +79,16 @@ export function ProjectSwitcher() {
         {current?.name ?? 'Untitled'}
       </button>
 
-      {open && (
-        <div className="bg-white rounded-card p-2.5 w-[260px] flex flex-col gap-1.5 max-h-[70vh] overflow-y-auto">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="project-panel"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={TRANSITION.snappy}
+            className="bg-white rounded-card p-2.5 w-[260px] flex flex-col gap-1.5 max-h-[70vh] overflow-y-auto"
+          >
           <div className="px-1 py-0.5">
             <label className="text-caption text-ink/50 uppercase tracking-wider">
               Current
@@ -151,8 +161,9 @@ export function ProjectSwitcher() {
           >
             {confirmDelete ? 'Click again to delete' : 'Delete project'}
           </button>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

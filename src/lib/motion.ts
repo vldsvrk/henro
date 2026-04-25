@@ -21,6 +21,8 @@ export const DURATION = {
 export const EASE = {
   /** Smooth out-curve for morphs (matches `--ease-smooth` in CSS) */
   smooth: [0.22, 1, 0.36, 1] as const,
+  /** Strong out-curve for snappy popovers / dropdowns */
+  snappy: [0.23, 1, 0.32, 1] as const,
   /** Standard ease-out string accepted by Framer */
   out: 'easeOut',
 } as const
@@ -36,6 +38,8 @@ export const TRANSITION = {
   base: { duration: DURATION.base, ease: EASE.out },
   /** Fast modal-style fade (150ms) */
   fast: { duration: DURATION.fast },
+  /** Snappy popovers / dropdowns (140ms with strong ease-out) */
+  snappy: { duration: 0.14, ease: EASE.snappy },
   /** Smooth morph for layout transitions (350ms cubic-bezier) */
   morph: { duration: DURATION.emphasized, ease: EASE.smooth },
 } as const

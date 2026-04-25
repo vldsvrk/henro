@@ -15,6 +15,7 @@ import { SelectionCount } from './components/SelectionCount'
 import { Toaster } from './components/Toaster'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { ProjectSwitcher } from './components/ProjectSwitcher'
+import { HenroMenu } from './components/HenroMenu'
 import { HelpButton } from './components/HelpButton'
 
 function App() {
@@ -84,7 +85,10 @@ function App() {
                 <SelectionCount />
               </>
             )}
-            <ProjectSwitcher />
+            <div className="fixed top-4 left-4 z-40 flex items-start gap-2">
+              <HenroMenu />
+              <ProjectSwitcher />
+            </div>
             <Settings />
             <HelpButton />
           </>

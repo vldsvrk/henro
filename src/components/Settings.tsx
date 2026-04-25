@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
+import { TRANSITION } from '../lib/motion'
 import {
   SYSTEM_PROMPT_PRESETS,
   PRESET_LABELS,
@@ -55,13 +57,21 @@ export function Settings() {
       setHidden(true)
       return
     }
-    const t = setTimeout(() => setHidden(false), 200)
+    const t = setTimeout(() => setHidden(false), 140)
     return () => clearTimeout(t)
   }, [hasSelection])
-  if (hidden) return null
 
   return (
-    <div className="fixed top-4 right-4 z-40 flex flex-col gap-2 items-end">
+    <AnimatePresence>
+      {!hidden && (
+        <motion.div
+          key="settings-root"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={TRANSITION.snappy}
+          className="fixed top-4 right-4 z-40 flex flex-col gap-2 items-end"
+        >
       <div className="flex items-center gap-2">
         <div
           className="flex items-center h-7 bg-white rounded-control px-1"
@@ -100,8 +110,16 @@ export function Settings() {
         </button>
       </div>
 
-      {showAI && (
-        <div className="bg-white rounded-card p-3.5 w-[320px] flex flex-col gap-2.5 max-h-[80vh] overflow-y-auto">
+      <AnimatePresence>
+        {showAI && (
+          <motion.div
+            key="ai-panel"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={TRANSITION.snappy}
+            className="bg-white rounded-card p-3.5 w-[320px] flex flex-col gap-2.5 max-h-[80vh] overflow-y-auto"
+          >
           <div className="flex items-center justify-between">
             <label className="text-body text-ink/60">OpenRouter API Key</label>
             <a
@@ -155,8 +173,11 @@ export function Settings() {
           >
             Save
           </button>
-        </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+        </motion.div>
       )}
-    </div>
+    </AnimatePresence>
   )
 }

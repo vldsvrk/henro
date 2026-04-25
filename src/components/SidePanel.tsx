@@ -33,10 +33,10 @@ export function SidePanel() {
       {visible && node && (
         <motion.div
           key="side-panel"
-          initial={{ opacity: 0, x: 24 }}
+          initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 24 }}
-          transition={TRANSITION.base}
+          exit={{ opacity: 0, x: 16 }}
+          transition={TRANSITION.snappy}
           className="fixed top-0 right-0 h-screen w-[320px] p-3 z-30 flex items-stretch pointer-events-none"
         >
       <div className="flex-1 bg-white rounded-xl flex flex-col p-2 gap-2 overflow-hidden pointer-events-auto">
