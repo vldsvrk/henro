@@ -98,7 +98,7 @@ async function chat(
 
       const data = await res.json()
       const content = data.choices[0].message.content as string
-      if (DEBUG) console.log('%cresponse:', 'color:#6BDEB9', `\n${content}`)
+      if (DEBUG) console.log('%cresponse:', 'color:#8FD9ED', `\n${content}`)
       return content
     }
 

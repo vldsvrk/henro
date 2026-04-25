@@ -1,7 +1,7 @@
 import { useBrainstormStore } from '../store'
 import type { NodeData } from '../store'
 
-const LINE_SELECT = '#6BDEB9'
+const LINE_SELECT = '#8FD9ED'
 const LINE_AI = '#FDA5D5'
 const LINE_DEFAULT = '#D5D5D5'
 // Perceptual bridge for the teal↔pink gradient — RGB interpolation between
