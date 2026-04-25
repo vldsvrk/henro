@@ -108,27 +108,38 @@ async function chat(
   }
 }
 
+export type ContextNode = { text: string; steer?: string }
+
 export async function generateBranches(
   text: string,
-  directContext: string[],
-  widerContext: string[],
+  directContext: ContextNode[],
+  widerContext: ContextNode[],
   steer?: string,
+  targetSteer?: string,
 ): Promise<string[]> {
   const { branchCount, systemPrompt } = getConfig()
 
   const trimmedSteer = steer?.trim()
-  const lensStr = trimmedSteer ? `\nLens: ${trimmedSteer}.` : ''
+  const trimmedTargetSteer = targetSteer?.trim()
+  const askStr = trimmedSteer ? `\nAsk: ${trimmedSteer}` : ''
+  const targetLine = trimmedTargetSteer
+    ? `Target to branch from: "${text}" (created under ask: "${trimmedTargetSteer}")`
+    : `Target to branch from: "${text}"`
+  const formatNode = (n: ContextNode) => {
+    const s = n.steer?.trim()
+    return s ? `- ${n.text} (under ask: "${s}")` : `- ${n.text}`
+  }
   const directStr =
     directContext.length > 0
-      ? `\n\nDirectly connected to the target (parent/siblings/linked — the target is a sub-idea of these; stay consistent with them):\n${directContext.map((n) => `- ${n}`).join('\n')}`
+      ? `\n\nDirectly connected to the target (parent/siblings/linked — already-taken ground; use only to understand the neighborhood, do not restate, rename, or re-skin these):\n${directContext.map(formatNode).join('\n')}`
       : ''
   const widerStr =
     widerContext.length > 0
-      ? `\n\nWider context (background — do not repeat, do not branch from these):\n${widerContext.map((n) => `- ${n}`).join('\n')}`
+      ? `\n\nWider context (background — do not repeat, do not branch from these):\n${widerContext.map(formatNode).join('\n')}`
       : ''
 
   const system = `${systemPrompt}\n\nReturn ONLY a JSON array of ${branchCount} strings. No markdown, no explanation.`
-  const user = `Target to branch from: "${text}"${lensStr}${directStr}${widerStr}\n\nReturn ${branchCount} new ideas as a JSON array of strings. Each idea: ≤15 words. Name the concept; skip the rationale, benefits, and qualifiers. Stay grounded in the direction the brainstorm is heading.`
+  const user = `${targetLine}${askStr}${directStr}${widerStr}\n\nReturn ${branchCount} new ideas as a JSON array of strings. Each idea: ≤15 words. Name the idea; skip the rationale, benefits, and qualifiers. Each branch must advance the target's substance — answer what it asks, follow where it points, or explore what it implies. Treat every listed context item (direct and wider) as already-taken ground: no restating, renaming, or re-skinning their analogies, mechanisms, or names. When generating multiple, each must take a different angle from the others. Match the register of the surrounding content; the target sets the substance.`
 
   const raw = await chat(
     [

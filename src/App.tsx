@@ -15,6 +15,7 @@ import { SelectionCount } from './components/SelectionCount'
 import { Toaster } from './components/Toaster'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { ProjectSwitcher } from './components/ProjectSwitcher'
+import { HelpButton } from './components/HelpButton'
 
 function App() {
   usePhysics()
@@ -85,6 +86,7 @@ function App() {
             )}
             <ProjectSwitcher />
             <Settings />
+            <HelpButton />
           </>
         )}
       </LayoutGroup>

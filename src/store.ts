@@ -6,6 +6,7 @@ import {
   mergeIdeas,
   compose as composeAI,
   generateProjectName,
+  type ContextNode,
 } from './lib/ai'
 import { CONTEXT_MAX_DEPTH, CONTEXT_MAX_NODES } from './lib/prompts'
 import { toastMessageForAiError } from './lib/errors'
@@ -137,7 +138,7 @@ function getContextNodes(
   startId: string,
   maxDepth: number = CONTEXT_MAX_DEPTH,
   maxNodes: number = CONTEXT_MAX_NODES,
-): { direct: string[]; wider: string[] } {
+): { direct: ContextNode[]; wider: ContextNode[] } {
   // Unified adjacency — treat parent-child and user-drawn connections equally.
   const adj = new Map<string, Set<string>>()
   const link = (a: string, b: string) => {
@@ -163,8 +164,8 @@ function getContextNodes(
   // further hops (wider background) so the AI knows what's immediately linked.
   const visited = new Set<string>([startId])
   const queue: { id: string; depth: number }[] = [{ id: startId, depth: 0 }]
-  const direct: string[] = []
-  const wider: string[] = []
+  const direct: ContextNode[] = []
+  const wider: ContextNode[] = []
   let total = 0
   while (queue.length > 0) {
     const { id, depth } = queue.shift()!
@@ -174,10 +175,11 @@ function getContextNodes(
     for (const nid of neighbors) {
       if (visited.has(nid)) continue
       visited.add(nid)
-      const text = nodes[nid]?.text
-      if (text) {
-        if (depth === 0) direct.push(text)
-        else wider.push(text)
+      const n = nodes[nid]
+      if (n?.text) {
+        const entry: ContextNode = { text: n.text, steer: n.steer }
+        if (depth === 0) direct.push(entry)
+        else wider.push(entry)
         total++
         if (total >= maxNodes) return { direct, wider }
       }
@@ -646,6 +648,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
         context.direct,
         context.wider,
         steer,
+        node.steer,
       )
 
       const grandparent = node.parentId ? state.nodes[node.parentId] : null
