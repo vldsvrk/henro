@@ -34,7 +34,6 @@ export type NodeData = {
   size: { w: number; h: number }
   status: 'active' | 'dismissed'
   origin: 'user' | 'ai'
-  depth: number
   steer?: string
 }
 
@@ -614,7 +613,6 @@ export const useBrainstormStore = create<BrainstormStore>()(
           size: { w: 0, h: 0 },
           status: 'active',
           origin: 'user',
-          depth: 0,
         },
       },
       past: appendCapped(s.past, snapshot(s)),
@@ -678,7 +676,6 @@ export const useBrainstormStore = create<BrainstormStore>()(
         size: { w: 0, h: 0 },
         status: 'active',
         origin: 'ai' as const,
-        depth: node.depth + 1,
         steer: trimmedSteer || undefined,
       }))
 
@@ -741,7 +738,6 @@ export const useBrainstormStore = create<BrainstormStore>()(
       x: (node1.position.x + node2.position.x) / 2,
       y: (node1.position.y + node2.position.y) / 2,
     }
-    const depth = Math.min(node1.depth, node2.depth)
     const placeholderId = crypto.randomUUID()
 
     // Instant dismiss both originals; spawn shimmering placeholder at midpoint.
@@ -758,7 +754,6 @@ export const useBrainstormStore = create<BrainstormStore>()(
         size: { w: 0, h: 0 },
         status: 'active',
         origin: 'ai',
-        depth,
       }
       return {
         nodes: newNodes,
@@ -825,7 +820,6 @@ export const useBrainstormStore = create<BrainstormStore>()(
             size: { w: 0, h: 0 },
             status: 'active',
             origin: 'user',
-            depth: 0,
           },
         },
         connections: newConnections,

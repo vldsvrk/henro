@@ -417,12 +417,14 @@ export const BubbleNode = memo(function BubbleNode({ id }: { id: string }) {
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDismiss}
-            className={`absolute -top-5 -right-5 w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#BCBCBD] hover:text-ink transition-[opacity,color] ${
+            className={`group/dismiss absolute -top-6 -right-6 w-8 h-8 flex items-center justify-center transition-opacity ${
               dismissVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
             aria-label="Dismiss"
           >
-            <CloseIcon />
+            <span className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#BCBCBD] group-hover/dismiss:text-ink transition-colors">
+              <CloseIcon />
+            </span>
           </button>
         )}
       </motion.div>

@@ -139,7 +139,7 @@ export async function generateBranches(
       : ''
 
   const system = `${systemPrompt}\n\nReturn ONLY a JSON array of ${branchCount} strings. No markdown, no explanation.`
-  const user = `${targetLine}${askStr}${directStr}${widerStr}\n\nReturn ${branchCount} new ideas as a JSON array of strings. Each idea: ≤15 words. Name the idea; skip the rationale, benefits, and qualifiers. Each branch must advance the target's substance — answer what it asks, follow where it points, or explore what it implies. Treat every listed context item (direct and wider) as already-taken ground: no restating, renaming, or re-skinning their analogies, mechanisms, or names. When generating multiple, each must take a different angle from the others. Match the register of the surrounding content; the target sets the substance.`
+  const user = `${targetLine}${askStr}${directStr}${widerStr}\n\nReturn ${branchCount} items as a JSON array of strings. Each item must advance the target's substance — addressing the ask, following where it points, or exploring what it implies. Treat every listed context item (direct and wider) as already-taken ground: no restating, renaming, or re-skinning their analogies, mechanisms, or names. When generating multiple, each must take a different angle from the others. Match the register of the surrounding content; the target sets the substance.`
 
   const raw = await chat(
     [

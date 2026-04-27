@@ -7,6 +7,7 @@ export function SidePanel() {
   const selectedNodeId = useBrainstormStore((s) => s.selectedNodeId)
   const selectedNodeIds = useBrainstormStore((s) => s.selectedNodeIds)
   const nodes = useBrainstormStore((s) => s.nodes)
+  const connections = useBrainstormStore((s) => s.connections)
   const updateNodeText = useBrainstormStore((s) => s.updateNodeText)
   const dismissNode = useBrainstormStore((s) => s.dismissNode)
   const selectNode = useBrainstormStore((s) => s.selectNode)
@@ -21,10 +22,25 @@ export function SidePanel() {
     selectedNodeIds.length <= 1
   )
 
-  const activeChildCount = node
-    ? node.childIds.filter((id) => nodes[id]?.status === 'active').length
-    : 0
-  const hasActiveChildren = activeChildCount > 0
+  // Count every active neighbor — hierarchical AI children plus user-drawn
+  // connections — deduped, with the parent excluded so it stays "Children".
+  const activeChildCount = (() => {
+    if (!node) return 0
+    const seen = new Set<string>()
+    for (const cid of node.childIds) {
+      if (nodes[cid]?.status === 'active') seen.add(cid)
+    }
+    for (const [a, b] of connections) {
+      const other = a === node.id ? b : b === node.id ? a : null
+      if (!other || other === node.parentId) continue
+      if (nodes[other]?.status === 'active') seen.add(other)
+    }
+    return seen.size
+  })()
+  // Keep the Expand button keyed off AI-hierarchical children only, so it
+  // still offers AI expansion on a node that only has user-drawn links.
+  const hasActiveChildren =
+    !!node && node.childIds.some((id) => nodes[id]?.status === 'active')
   const parent = node?.parentId ? nodes[node.parentId] : null
   const isAI = node?.origin === 'ai'
 
@@ -45,8 +61,6 @@ export function SidePanel() {
             {isAI ? 'AI Response' : 'Your Thought'}
           </span>
           <div className="flex items-center gap-2 text-caption text-ink/60">
-            <span>Depth: {node.depth}</span>
-            <span className="w-[3px] h-[3px] rounded-full bg-ink/40" />
             <span>Children: {activeChildCount}</span>
           </div>
         </div>

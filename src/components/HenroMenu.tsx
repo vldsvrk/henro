@@ -8,6 +8,7 @@ const VERSION = '0.1.0'
 const LAST_UPDATED = 'Apr 25, 2026'
 const DOMAIN = 'henro.space'
 const GITHUB_URL = 'https://github.com/vldsvrk/henro'
+const TWITTER_URL = 'https://x.com/vldsvrk'
 
 type Row = { label: string; value: React.ReactNode }
 
@@ -22,7 +23,7 @@ const ROWS: Row[] = [
         href={GITHUB_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="underline underline-offset-2 hover:opacity-100"
+        className="underline underline-offset-2 decoration-current/40 hover:opacity-100"
       >
         henro
       </a>
@@ -110,7 +111,15 @@ export function HenroMenu() {
               <p className="text-[10px] opacity-40 text-center mt-11 leading-[1.4]">
                 Designed and Developed
                 <br />
-                by <span className="underline underline-offset-2">Vlad Savruk</span>
+                by{' '}
+                <a
+                  href={TWITTER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 decoration-current/40"
+                >
+                  Vlad Savruk
+                </a>
               </p>
             </motion.div>
             </motion.div>
