@@ -15,7 +15,8 @@ import { BranchIcon } from './icons'
 const DEFAULT_MODEL = 'anthropic/claude-sonnet-4.5'
 
 export function Settings() {
-  const [showAI, setShowAI] = useState(false)
+  const showAI = useBrainstormStore((s) => s.settingsAIOpen)
+  const setShowAI = useBrainstormStore((s) => s.setSettingsAIOpen)
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(DEFAULT_MODEL)
   const [branchCount, setBranchCount] = useState(DEFAULT_BRANCH_COUNT)

@@ -30,6 +30,13 @@ export function writeConfig(next: Partial<OpenRouterConfig>) {
   window.dispatchEvent(new Event(CONFIG_CHANGED_EVENT))
 }
 
+/** Loose shape check for OpenRouter keys — they're `sk-or-...` followed by
+ * a long base64/hex blob. Lenient on purpose: we only want to catch obvious
+ * mistakes (random words, half-pasted strings), not gatekeep real keys. */
+export function looksLikeOpenRouterKey(key: string): boolean {
+  return /^sk-or-[a-zA-Z0-9_-]{20,}$/.test(key.trim())
+}
+
 function subscribe(cb: () => void) {
   window.addEventListener(CONFIG_CHANGED_EVENT, cb)
   window.addEventListener('storage', cb)

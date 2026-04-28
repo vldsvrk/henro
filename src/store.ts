@@ -9,7 +9,7 @@ import {
   type ContextNode,
 } from './lib/ai'
 import { CONTEXT_MAX_DEPTH, CONTEXT_MAX_NODES } from './lib/prompts'
-import { toastMessageForAiError } from './lib/errors'
+import { AiError, toastMessageForAiError } from './lib/errors'
 import { useToastStore } from './lib/toast'
 import {
   henroStorage,
@@ -19,9 +19,16 @@ import {
 } from './lib/persistence'
 
 function toastError(err: unknown) {
+  // 'auth' / 'no-key' toasts mention "Settings" — surface it as an inline
+  // clickable word that jumps the user straight into the Settings panel.
+  const action =
+    err instanceof AiError && (err.kind === 'auth' || err.kind === 'no-key')
+      ? ({ label: 'Settings', intent: 'open-settings' } as const)
+      : undefined
   useToastStore.getState().push({
     kind: 'error',
     message: toastMessageForAiError(err),
+    action,
   })
 }
 
@@ -74,6 +81,7 @@ interface BrainstormStore {
   mergeTarget: string | null
   composeResult: string | null
   composeOpen: boolean
+  settingsAIOpen: boolean
   pendingNodePosition: Position | null
   selectedNodeId: string | null
   selectedNodeIds: string[]
@@ -127,6 +135,7 @@ interface BrainstormStore {
   openCompose: () => void
   closeCompose: () => void
   clearComposeResult: () => void
+  setSettingsAIOpen: (open: boolean) => void
   pan: (dx: number, dy: number) => void
   zoom: (delta: number, center: Position) => void
 }
@@ -238,6 +247,7 @@ function freshEphemeralState() {
     mergeTarget: null,
     mergeAnim: null,
     composeOpen: false,
+    settingsAIOpen: false,
     pendingNodePosition: null,
     pendingConnectionSource: null,
     steerPrompt: null,
@@ -254,6 +264,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
   mergeTarget: null,
   composeResult: null,
   composeOpen: false,
+  settingsAIOpen: false,
   pendingNodePosition: null,
   selectedNodeId: null,
   selectedNodeIds: [],
@@ -894,6 +905,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
   openCompose: () => set((s) => (s.composeResult ? { composeOpen: true } : s)),
   closeCompose: () => set({ composeOpen: false }),
   clearComposeResult: () => set({ composeResult: null, composeOpen: false }),
+  setSettingsAIOpen: (open) => set({ settingsAIOpen: open }),
 
   pan: (dx, dy) => {
     set((s) => ({

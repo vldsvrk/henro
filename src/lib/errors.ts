@@ -23,11 +23,11 @@ export function toastMessageForAiError(err: unknown): string {
       case 'no-key':
         return 'Add your OpenRouter key in Settings to start.'
       case 'auth':
-        return 'Invalid API key — check Settings.'
+        return 'Invalid API key – edit in Settings.'
       case 'rate-limit':
         return 'Rate limited, try again in a moment.'
       case 'network':
-        return 'Network error — check your connection.'
+        return 'Network error – check your connection.'
       default:
         return err.message || 'Something went wrong.'
     }
