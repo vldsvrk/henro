@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { uid } from './uid'
 
 export type ToastKind = 'error' | 'info'
 
@@ -37,7 +38,7 @@ const DEFAULT_TTL: Record<ToastKind, number> = {
 export const useToastStore = create<ToastStore>((set, get) => ({
   toasts: [],
   push: ({ kind, message, ttl, action }) => {
-    const id = crypto.randomUUID()
+    const id = uid()
     set((s) => ({ toasts: [...s.toasts, { id, kind, message, action }] }))
     const timeout = ttl ?? DEFAULT_TTL[kind]
     setTimeout(() => get().dismiss(id), timeout)

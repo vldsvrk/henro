@@ -11,6 +11,7 @@ import {
 import { CONTEXT_MAX_DEPTH, CONTEXT_MAX_NODES } from './lib/prompts'
 import { AiError, toastMessageForAiError } from './lib/errors'
 import { useToastStore } from './lib/toast'
+import { uid } from './lib/uid'
 import {
   henroStorage,
   readProjectData,
@@ -341,7 +342,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
   },
 
   newProject: (name) => {
-    const id = crypto.randomUUID()
+    const id = uid()
     const now = Date.now()
     set((s) => ({
       currentProjectId: id,
@@ -611,7 +612,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
     }),
 
   setSeed: (text) => {
-    const id = crypto.randomUUID()
+    const id = uid()
     set((s) => ({
       seedNodeId: id,
       nodes: {
@@ -679,7 +680,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
 
       const trimmedSteer = steer?.trim()
       const children: NodeData[] = branches.map((text, i) => ({
-        id: crypto.randomUUID(),
+        id: uid(),
         text,
         parentId: id,
         childIds: [],
@@ -749,7 +750,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
       x: (node1.position.x + node2.position.x) / 2,
       y: (node1.position.y + node2.position.y) / 2,
     }
-    const placeholderId = crypto.randomUUID()
+    const placeholderId = uid()
 
     // Instant dismiss both originals; spawn shimmering placeholder at midpoint.
     set((s) => {
@@ -813,7 +814,7 @@ export const useBrainstormStore = create<BrainstormStore>()(
   },
 
   addUserNode: (text, position, connectFromId) => {
-    const id = crypto.randomUUID()
+    const id = uid()
     set((s) => {
       const newConnections =
         connectFromId && s.nodes[connectFromId]

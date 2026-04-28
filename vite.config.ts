@@ -11,7 +11,6 @@ const CSP = [
   "connect-src 'self' https://openrouter.ai",
   "object-src 'none'",
   "base-uri 'self'",
-  "frame-ancestors 'none'",
   "form-action 'self'",
 ].join('; ')
 
