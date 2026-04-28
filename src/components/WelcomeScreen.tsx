@@ -68,6 +68,11 @@ export function WelcomeScreen() {
               }}
               placeholder="sk-or..."
               autoFocus
+              autoComplete="off"
+              data-bwignore="true"
+              data-1p-ignore=""
+              data-lpignore="true"
+              data-form-type="other"
               className="text-button bg-canvas rounded-control px-4 py-2.5 w-full outline-none text-ink placeholder:text-ink/60 leading-[1.4]"
             />
           </div>

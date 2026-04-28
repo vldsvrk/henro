@@ -151,6 +151,11 @@ export function Settings() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-or-..."
+            autoComplete="off"
+            data-bwignore="true"
+            data-1p-ignore=""
+            data-lpignore="true"
+            data-form-type="other"
             className="text-ui bg-surface-soft rounded-lg px-3 py-2 w-full outline-none text-ink placeholder:text-ink/40"
           />
 
