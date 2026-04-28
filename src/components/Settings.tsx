@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useBrainstormStore } from '../store'
 import { TRANSITION } from '../lib/motion'
@@ -62,11 +62,25 @@ export function Settings() {
     return () => clearTimeout(t)
   }, [hasSelection])
 
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!showAI) return
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Node | null
+      if (target && rootRef.current && !rootRef.current.contains(target)) {
+        setShowAI(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [showAI, setShowAI])
+
   return (
     <AnimatePresence>
       {!hidden && (
         <motion.div
           key="settings-root"
+          ref={rootRef}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}

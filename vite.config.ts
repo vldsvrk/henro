@@ -4,11 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
-  "connect-src 'self' https://openrouter.ai",
+  "connect-src 'self' https://openrouter.ai https://cloudflareinsights.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
