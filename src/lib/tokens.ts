@@ -1,22 +1,26 @@
 /**
- * Design token mirrors for non-Tailwind contexts (SVG attributes, canvas,
- * JS-computed styles). Tailwind `@theme` tokens in src/index.css are the
- * source of truth — these constants must mirror them exactly.
+ * Theme tokens for non-CSS contexts (SVG attributes, canvas).
  *
- * Keep both files in sync when adjusting values.
+ * Reads from the live CSS custom properties defined in `@theme` in
+ * src/index.css — that file is the single source of truth. Change the
+ * CSS variable, this follows automatically.
+ *
+ * Fallbacks only fire in non-browser contexts (SSR, tests).
  */
+
+function readVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return v || fallback
+}
 
 /** Stroke colors for SVG `<line>` and `<stop>` elements in Connections. */
 export const LINE = {
-  /** --color-line-neutral */
-  default: '#D5D5D5',
-  /** --color-select */
-  select: '#8FD9ED',
-  /** --color-ai */
-  ai: '#FDA5D5',
-  /** --color-line-blend — perceptual midpoint for select↔ai gradient */
-  blend: '#C8ABDD',
-} as const
+  default: readVar('--color-line-neutral', '#D5D5D5'),
+  select: readVar('--color-select', '#8FD9ED'),
+  ai: readVar('--color-ai', '#FDA5D5'),
+  blend: readVar('--color-line-blend', '#C8ABDD'),
+}
 
 /** Stroke widths for SVG connection lines. */
 export const STROKE = {

@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
 export const CONFIG_KEY = 'openrouter-config'
-export const CONFIG_CHANGED_EVENT = 'henro:config-changed'
 
 export type OpenRouterConfig = {
   apiKey: string
@@ -24,10 +23,12 @@ export function readConfig(): OpenRouterConfig {
   }
 }
 
+const listeners = new Set<() => void>()
+
 export function writeConfig(next: Partial<OpenRouterConfig>) {
   const merged = { ...readConfig(), ...next }
   localStorage.setItem(CONFIG_KEY, JSON.stringify(merged))
-  window.dispatchEvent(new Event(CONFIG_CHANGED_EVENT))
+  listeners.forEach((cb) => cb())
 }
 
 /** Loose shape check for OpenRouter keys — they're `sk-or-...` followed by
@@ -38,11 +39,15 @@ export function looksLikeOpenRouterKey(key: string): boolean {
 }
 
 function subscribe(cb: () => void) {
-  window.addEventListener(CONFIG_CHANGED_EVENT, cb)
-  window.addEventListener('storage', cb)
+  listeners.add(cb)
+  // Cross-tab updates: localStorage 'storage' event fires in *other* tabs.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === CONFIG_KEY) cb()
+  }
+  window.addEventListener('storage', onStorage)
   return () => {
-    window.removeEventListener(CONFIG_CHANGED_EVENT, cb)
-    window.removeEventListener('storage', cb)
+    listeners.delete(cb)
+    window.removeEventListener('storage', onStorage)
   }
 }
 

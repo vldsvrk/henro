@@ -47,13 +47,14 @@ Open the app, paste your OpenRouter key into Settings, and start branching. Get 
 
 ## Env flags
 
-Copy `.env.example` to `.env.local` if you want either flag.
+Copy `.env.example` to `.env.local` if you want any of these.
 
 | Flag | Effect |
 |---|---|
+| `VITE_OPENROUTER_API_KEY=sk-or-…` | Sets the BYOK key for local dev — skips the welcome screen and is used as a fallback when nothing is saved in localStorage. **Never set this in a hosted build:** Vite inlines `VITE_*` vars into the public JS bundle, exposing the key to anyone who opens DevTools. |
 | `VITE_HENRO_DEBUG=true` | Logs every AI prompt + response to the browser console (collapsed groups) |
 
-API keys are **not** read from env — the app is BYOK-only, keys live in localStorage. The env flag is only for developer debugging.
+In production, the app is BYOK-only — every visitor pastes their own key, which lives in their localStorage and never leaves the browser.
 
 ## Deploy
 
@@ -64,8 +65,8 @@ pnpm build
 ```
 
 - `dist/` is the deploy output
-- `public/_redirects` → SPA fallback (works on Cloudflare Pages + Netlify)
 - `public/_headers` → security headers (HSTS, nosniff, frame-ancestors, referrer-policy)
+- `public/robots.txt` + `public/sitemap.xml` → search-engine basics
 
 ## Architecture
 
@@ -78,10 +79,15 @@ src/
 │   ├── Canvas.tsx       – pan/zoom, marquee select
 │   ├── BubbleNode.tsx   – draggable node, merge animation, expand
 │   ├── Connections.tsx  – SVG edges
+│   ├── SeedInput.tsx    – initial seed prompt (pre-canvas)
+│   ├── NodeInput.tsx    – inline rename / per-node prompt
 │   ├── SidePanel.tsx    – node detail (on selection)
 │   ├── ComposeButton.tsx– summary modal
-│   ├── Settings.tsx     – BYOK + model + branch stepper
+│   ├── Settings.tsx     – API key + model + branch count + system prompt (presets + editor)
 │   ├── ProjectSwitcher.tsx
+│   ├── HenroMenu.tsx    – top-left brand menu
+│   ├── HelpButton.tsx   – bottom-left shortcuts overlay
+│   ├── SelectionCount.tsx – selection count chip
 │   ├── WelcomeScreen.tsx
 │   ├── Toaster.tsx / ErrorBoundary.tsx
 │   └── icons.tsx
@@ -92,6 +98,9 @@ src/
 │   ├── toast.ts         – tiny toast store
 │   ├── persistence.ts   – custom Zustand StateStorage adapter (split per-project keys)
 │   ├── config.ts        – BYOK config read/write + useHasApiKey
+│   ├── tokens.ts        – design tokens (z-index, etc.)
+│   ├── motion.ts        – framer-motion duration / easing presets
+│   ├── uid.ts           – RFC4122 v4 UUID helper (works in non-secure contexts)
 │   ├── layout.ts        – child-node position math
 │   ├── physics.ts       – overlap resolution
 │   └── usePhysics.ts    – settle-after-drag hook
